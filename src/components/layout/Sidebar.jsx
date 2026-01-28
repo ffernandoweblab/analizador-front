@@ -8,8 +8,10 @@ function Sidebar() {
 
   const menuItems = [
     // { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/reportes', label: 'Reportes', icon: '📊' },
+    
+    
     { path: '/prediccionhoy', label: 'Informe de hoy', icon: '🤖' },
+    { path: '/reportes', label: 'Reportes', icon: '📊' },
   ];
 
   return (
