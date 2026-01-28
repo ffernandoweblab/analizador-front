@@ -7,7 +7,7 @@ function Sidebar() {
   const location = useLocation();
 
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
+    // { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/reportes', label: 'Reportes', icon: '📊' },
     { path: '/prediccionhoy', label: 'Informe de hoy', icon: '🤖' },
   ];

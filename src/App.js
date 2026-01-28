@@ -10,7 +10,7 @@ function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<ProductividadCards />} />
         <Route path="/prediccionhoy" element={<ProductividadCards />} />
         <Route path="/reportes" element={<ReportesDiarios />} />
         <Route path="*" element={<Navigate to="/" />} />
