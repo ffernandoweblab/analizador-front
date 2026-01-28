@@ -1,47 +1,9 @@
 /* src/components/Productividad/ProductividadCards.css */
 
-/* ===== VARIABLES MODO CLARO ===== */
-:root {
-  --color-productivo: #10b981;
-  --color-productivo-light: #d1fae5;
-  --color-productivo-dark: #059669;
-  
-  --color-regular: #f59e0b;
-  --color-regular-light: #fef3c7;
-  --color-regular-dark: #d97706;
-  
-  --color-no-productivo: #ef4444;
-  --color-no-productivo-light: #fee2e2;
-  --color-no-productivo-dark: #dc2626;
-  
-  --color-primary: #3b82f6;
-  --color-primary-dark: #2563eb;
-  
-  /* Variables adaptables para modo claro */
-  --color-text-dark: #1e293b;
-  --color-text-medium: #475569;
-  --color-text-light: #94a3b8;
-  
-  --color-bg-light: #f8fafc;
-  --color-bg-card: #ffffff;
-  --color-border: #e2e8f0;
-  --color-gradient-start: #f8fafc;
-  --color-gradient-end: #e2e8f0;
-  
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-}
-
-/* ===== VARIABLES MODO OSCURO ===== */
+/* ===== VARIABLES TEMA OSCURO (DEFAULT) ===== */
+:root,
 [data-theme="dark"] {
-  /* Colores de estado se mantienen pero se ajustan para mejor contraste */
+  /* Colores de estado - Modo Oscuro */
   --color-productivo: #34d399;
   --color-productivo-light: rgba(52, 211, 153, 0.15);
   --color-productivo-dark: #10b981;
@@ -57,21 +19,66 @@
   --color-primary: #60a5fa;
   --color-primary-dark: #3b82f6;
   
-  /* Variables específicas para modo oscuro */
+  /* Colores de texto - Modo Oscuro */
   --color-text-dark: #f1f5f9;
   --color-text-medium: #cbd5e1;
   --color-text-light: #94a3b8;
   
+  /* Colores de fondo - Modo Oscuro */
   --color-bg-light: #1e293b;
   --color-bg-card: #0f172a;
   --color-border: #334155;
   --color-gradient-start: #1e293b;
   --color-gradient-end: #0f172a;
   
+  /* Sombras - Modo Oscuro */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  
+  /* Radios - Iguales en ambos modos */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
+
+/* ===== VARIABLES TEMA CLARO (LIGHT MODE) ===== */
+[data-theme="light"] {
+  /* Colores de estado - Modo Claro */
+  --color-productivo: #10b981;
+  --color-productivo-light: #d1fae5;
+  --color-productivo-dark: #059669;
+  
+  --color-regular: #f59e0b;
+  --color-regular-light: #fef3c7;
+  --color-regular-dark: #d97706;
+  
+  --color-no-productivo: #ef4444;
+  --color-no-productivo-light: #fee2e2;
+  --color-no-productivo-dark: #dc2626;
+  
+  --color-primary: #3b82f6;
+  --color-primary-dark: #2563eb;
+  
+  /* Colores de texto - Modo Claro */
+  --color-text-dark: #1e293b;
+  --color-text-medium: #475569;
+  --color-text-light: #94a3b8;
+  
+  /* Colores de fondo - Modo Claro */
+  --color-bg-light: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-gradient-start: #f8fafc;
+  --color-gradient-end: #e2e8f0;
+  
+  /* Sombras - Modo Claro */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== ANIMACIÓN SKELETON ===== */
@@ -158,6 +165,10 @@
 /* Color picker específico para modo oscuro */
 [data-theme="dark"] .date-input {
   color-scheme: dark;
+}
+
+[data-theme="light"] .date-input {
+  color-scheme: light;
 }
 
 .search-button {
@@ -594,33 +605,31 @@
 }
 
 .stat-icon.actividades {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: var(--color-primary);
-}
-
-[data-theme="dark"] .stat-icon.actividades {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.3) 100%);
   color: var(--color-primary);
 }
 
+[data-theme="light"] .stat-icon.actividades {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
 .stat-icon.revisiones {
-  background: linear-gradient(135deg, var(--color-productivo-light) 0%, #a7f3d0 100%);
+  background: linear-gradient(135deg, var(--color-productivo-light) 0%, rgba(52, 211, 153, 0.3) 100%);
   color: var(--color-productivo);
 }
 
-[data-theme="dark"] .stat-icon.revisiones {
-  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(52, 211, 153, 0.3) 100%);
-  color: var(--color-productivo);
+[data-theme="light"] .stat-icon.revisiones {
+  background: linear-gradient(135deg, var(--color-productivo-light) 0%, #a7f3d0 100%);
 }
 
 .stat-icon.tiempo {
-  background: linear-gradient(135deg, #fae8ff 0%, #e9d5ff 100%);
-  color: #a855f7;
-}
-
-[data-theme="dark"] .stat-icon.tiempo {
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.3) 100%);
   color: #c084fc;
+}
+
+[data-theme="light"] .stat-icon.tiempo {
+  background: linear-gradient(135deg, #fae8ff 0%, #e9d5ff 100%);
+  color: #a855f7;
 }
 
 .stat-content {
@@ -693,6 +702,10 @@
 
 [data-theme="dark"] .detail-value {
   background: rgba(96, 165, 250, 0.2);
+}
+
+[data-theme="light"] .detail-value {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 /* ===== BARRAS DE PROGRESO ===== */

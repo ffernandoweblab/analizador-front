@@ -6,17 +6,28 @@ function Header() {
   const { theme, toggleTheme } = useTheme();
 
   return (
+    
+    
     <header className="header">
+      
       <div className="header-content">
-        <h1 className="header-title">📊 Analizador de Productividad</h1>
+        
+        <div className="header-left">
+          
+          
+        </div>
+        
         <div className="header-actions">
-          <button className="theme-toggle-btn" onClick={toggleTheme} title={`Cambiar a tema ${theme === 'light' ? 'oscuro' : 'claro'}`}>
+          
+          
+          <button 
+            className="theme-toggle-btn" 
+            onClick={toggleTheme} 
+            title={`Cambiar a tema ${theme === 'light' ? 'oscuro' : 'claro'}`}
+            aria-label="Toggle theme"
+          >
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
-          <button className="btn-secondary">Configuración</button>
-          <div className="user-info">
-            <span className="user-name">Usuario</span>
-          </div>
         </div>
       </div>
     </header>

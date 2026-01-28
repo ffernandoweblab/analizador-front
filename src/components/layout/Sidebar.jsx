@@ -1,21 +1,15 @@
 import React from 'react';
 import './Sidebar.css';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-function Sidebar({ activeView, setActiveView }) {
+function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'productividad', label: 'Productividad', icon: '📈' },
-    // { id: 'team', label: 'Equipo', icon: '👥' },
-    // { id: 'activities', label: 'Actividades', icon: '📋' },
-    { id: 'reportes', label: 'Reportes', icon: '📊' },
-    // { id: 'calenda r', label: 'Calendario', icon: '📅' },
-    // { id: 'Productividad', label: 'Informe dia hoy ', icon: '📅' },
-
-    // { id: 'pred  icciondiaria', label: 'Prediccion', icon: '📅' },
-    // { id: "predicciondiaria1", label: "Predicción", icon: "🤖" },
-    { id: "prediccionhoy", label: "Informe de hoy", icon: "🤖" },
-    // { id: "rodrigo", label: "Historico Productividad", icon: "🤖" },
-    // { id: "pruebadefecha", label: "prueba de fecha", icon: "🤖" },
+    { path: '/', label: 'Dashboard', icon: '📊' },
+    { path: '/reportes', label: 'Reportes', icon: '📊' },
+    { path: '/prediccionhoy', label: 'Informe de hoy', icon: '🤖' },
   ];
 
   return (
@@ -23,9 +17,11 @@ function Sidebar({ activeView, setActiveView }) {
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <button
-            key={item.id}
-            className={`sidebar-item ${activeView === item.id ? 'active' : ''}`}
-            onClick={() => setActiveView(item.id)}
+            key={item.path}
+            className={`sidebar-item ${
+              location.pathname === item.path ? 'active' : ''
+            }`}
+            onClick={() => navigate(item.path)}
           >
             <span className="sidebar-icon">{item.icon}</span>
             <span className="sidebar-label">{item.label}</span>
