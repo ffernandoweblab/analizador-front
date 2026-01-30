@@ -40,6 +40,100 @@ function formatearTiempo(minutos) {
   return `${minutos} min`;
 }
 
+// Modal expandible para gráficas
+function ModalGrafica({ titulo, tipo, datos, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{titulo}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        
+        <div className="modal-body">
+          {tipo === "barras_tiempo" && (
+            <ResponsiveContainer width="100%" height={600}>
+              <BarChart data={datos} layout="vertical" margin={{ top: 5, right: 30, left: 200, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(value) => formatearTiempo(value)}
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                />
+                <Bar dataKey="tiempo" fill={COLORS.productivo} radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+          
+          {tipo === "actividades_revisiones" && (
+            <ResponsiveContainer width="100%" height={600}>
+              <BarChart data={datos} margin={{ top: 5, right: 30, left: 30, bottom: 100 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis 
+                  dataKey="nombre" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={120}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="actividades" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="revisiones" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componente de paginación para tabla
+function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
+  const totalPaginas = Math.ceil(total / porPagina);
+  
+  if (totalPaginas <= 1) return null;
+
+  return (
+    <div className="paginacion">
+      <button 
+        onClick={() => onCambiarPagina(paginaActual - 1)}
+        disabled={paginaActual === 1}
+        className="btn-paginacion"
+      >
+        ← Anterior
+      </button>
+      
+      <span className="info-paginacion">
+        Página {paginaActual} de {totalPaginas}
+      </span>
+      
+      <button 
+        onClick={() => onCambiarPagina(paginaActual + 1)}
+        disabled={paginaActual === totalPaginas}
+        className="btn-paginacion"
+      >
+        Siguiente →
+      </button>
+    </div>
+  );
+}
+
 export default function ReportesDiarios() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -47,8 +141,12 @@ export default function ReportesDiarios() {
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [isToday, setIsToday] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  
+  // Estados para modales y paginación
+  const [modalActivo, setModalActivo] = useState(null);
+  const [paginaUsuarios, setPaginaUsuarios] = useState(1);
+  const usuariosPorPagina = 8;
 
-  // ✅ Detectar si la fecha seleccionada es hoy
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     setIsToday(fecha === today);
@@ -60,8 +158,6 @@ export default function ReportesDiarios() {
     try {
       const today = new Date().toISOString().slice(0, 10);
       
-      // ✅ IMPORTANTE: Usar el mismo endpoint que ProductividadCards
-      // Si es hoy, NO enviar el parámetro date (igual que en ProductividadCards)
       const url = fecha === today
         ? `${BACKEND_URL}/api/productividad/hoy`
         : `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
@@ -75,7 +171,6 @@ export default function ReportesDiarios() {
       
       const jsonData = await res.json();
       
-      // ✅ Verificar que haya usuarios en los datos
       if (!jsonData.users || jsonData.users.length === 0) {
         console.warn("⚠️ Sin datos de usuarios para esta fecha");
         setData(jsonData);
@@ -83,6 +178,9 @@ export default function ReportesDiarios() {
         console.log("✅ Datos cargados correctamente:", jsonData.users.length, "usuarios");
         setData(jsonData);
       }
+      
+      // Reiniciar paginación al cargar nuevos datos
+      setPaginaUsuarios(1);
     } catch (e) {
       console.error("❌ Error cargando datos:", e);
       setErr(e?.message || String(e));
@@ -91,12 +189,10 @@ export default function ReportesDiarios() {
     }
   }, [fecha]);
 
-  // ✅ Cargar datos al cambiar la fecha
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
 
-  // ✅ Auto-refresh cada 5 minutos SI es hoy y autoRefresh está activado
   useEffect(() => {
     if (!isToday || !autoRefresh) return;
 
@@ -104,12 +200,11 @@ export default function ReportesDiarios() {
     const interval = setInterval(() => {
       console.log("🔄 Refrescando datos del día actual...");
       cargarDatos();
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [isToday, autoRefresh, cargarDatos]);
 
-  // Procesar datos para gráficas
   const procesarDatosGenerales = useCallback(() => {
     if (!data?.users) return [];
 
@@ -156,10 +251,10 @@ export default function ReportesDiarios() {
   const promedios = procesarPromediosUsuarios();
   const usuarios = data?.users || [];
 
-  // Datos para gráfica de barras horizontal de usuarios
-  const datosUsuarios = usuarios
+  // Datos para gráfica de barras - TOP 8 (preview)
+  const datosUsuariosPreview = usuarios
     .sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0))
-    .slice(0, 10)
+    .slice(0, 8)
     .map(user => ({
       nombre: user.colaborador,
       tiempo: user.tiempo_total || 0,
@@ -167,6 +262,22 @@ export default function ReportesDiarios() {
       revisiones: user.revisiones || 0,
       estado: user.prediccion?.label || "regular",
     }));
+
+  // Datos para gráfica de barras - TODOS (para modal)
+  const datosUsuariosCompletos = usuarios
+    .sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0))
+    .map(user => ({
+      nombre: user.colaborador,
+      tiempo: user.tiempo_total || 0,
+      actividades: user.actividades || 0,
+      revisiones: user.revisiones || 0,
+      estado: user.prediccion?.label || "regular",
+    }));
+
+  // Paginación para tabla
+  const indiceInicio = (paginaUsuarios - 1) * usuariosPorPagina;
+  const indiceFin = indiceInicio + usuariosPorPagina;
+  const usuariosPaginados = usuarios.slice(indiceInicio, indiceFin);
 
   if (err) return <p className="error-message">{err}</p>;
   
@@ -179,7 +290,6 @@ export default function ReportesDiarios() {
     );
   }
 
-  // ✅ Mostrar aviso si no hay datos para hoy
   const mostrarAvisoSinDatos = isToday && usuarios.length === 0;
 
   return (
@@ -274,14 +384,12 @@ export default function ReportesDiarios() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Gráfica de Barras Verticales - Top Usuarios por Tiempo */}
-              <div className="graph-card">
+              {/* Gráfica de Barras Verticales - Top Usuarios por Tiempo (Clickeable) */}
+              <div className="graph-card expandible" onClick={() => setModalActivo('tiempo')}>
+                <div className="card-badge">Haz clic para ver todos</div>
                 <h3>⏱️ Top Usuarios por Tiempo</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={datosUsuarios}
-                    layout="vertical"
-                  >
+                  <BarChart data={datosUsuariosPreview} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" tick={{ fontSize: 12 }} />
                     <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11 }} width={80} />
@@ -301,11 +409,12 @@ export default function ReportesDiarios() {
             </div>
 
             <div className="graphs-grid">
-              {/* Gráfica de Barras - Actividades y Revisiones */}
-              <div className="graph-card">
+              {/* Gráfica de Barras - Actividades y Revisiones (Clickeable) */}
+              <div className="graph-card expandible" onClick={() => setModalActivo('actividades')}>
+                <div className="card-badge">Haz clic para ver todos</div>
                 <h3>📋 Actividades vs Revisiones</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={datosUsuarios}>
+                  <BarChart data={datosUsuariosPreview}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="nombre" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
                     <YAxis tick={{ fontSize: 12 }} />
@@ -399,12 +508,19 @@ export default function ReportesDiarios() {
           </section>
         )}
 
-        {/* Sección 3: Resumen de Usuarios */}
+        {/* Sección 3: Resumen de Usuarios (CON PAGINACIÓN) */}
         {usuarios.length > 0 && (
           <section className="reportes-section">
             <div className="section-title">
-              <h2>Detalle de Usuarios</h2>
+              <h2>Detalle de Usuarios ({usuarios.length} total)</h2>
             </div>
+
+            <PaginacionTabla 
+              total={usuarios.length} 
+              porPagina={usuariosPorPagina}
+              paginaActual={paginaUsuarios}
+              onCambiarPagina={setPaginaUsuarios}
+            />
 
             <div className="usuarios-table">
               <div className="table-header">
@@ -414,7 +530,7 @@ export default function ReportesDiarios() {
                 <div className="table-cell">Actividades</div>
                 <div className="table-cell">Revisiones</div>
               </div>
-              {usuarios.map((user) => {
+              {usuariosPaginados.map((user) => {
                 const estado = user.prediccion?.label || "regular";
                 const colorEstado = COLORS[estado];
                 return (
@@ -434,9 +550,35 @@ export default function ReportesDiarios() {
                 );
               })}
             </div>
+
+            <PaginacionTabla 
+              total={usuarios.length} 
+              porPagina={usuariosPorPagina}
+              paginaActual={paginaUsuarios}
+              onCambiarPagina={setPaginaUsuarios}
+            />
           </section>
         )}
       </div>
+
+      {/* Modales de gráficas expandidas */}
+      {modalActivo === 'tiempo' && (
+        <ModalGrafica
+          titulo="📊 Todos los Usuarios - Tiempo Total"
+          tipo="barras_tiempo"
+          datos={datosUsuariosCompletos}
+          onClose={() => setModalActivo(null)}
+        />
+      )}
+
+      {modalActivo === 'actividades' && (
+        <ModalGrafica
+          titulo="📋 Todos los Usuarios - Actividades vs Revisiones"
+          tipo="actividades_revisiones"
+          datos={datosUsuariosCompletos}
+          onClose={() => setModalActivo(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,42 @@
-'use client';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import IconButton from "@mui/material/IconButton";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
-// src/components/Productividad/ProductividadCards.jsx
-import React, { useCallback, useEffect, useState } from "react";
-import './ProductividadCards.css';
+
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  Chip,
+  Container,
+  Divider,
+  Grid,
+  LinearProgress,
+  Skeleton,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+  Paper,
+  alpha,
+} from "@mui/material";
+
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+
+
+//const BACKEND_URL = "http://localhost:3001";
+const BACKEND_URL = "https://backend-xycc.onrender.com";
 
 const LABEL_PRETTY = {
   no_productivo: "No productivo",
@@ -13,7 +47,7 @@ const LABEL_PRETTY = {
 const DESCRIPTIONS = {
   no_productivo: "Tuviste una productividad baja. Puedes mejorar.",
   regular: "Tuviste una productividad regular. Puedes mejorar.",
-  productivo: "Fuiste muy productivo hoy. Excelente desempeno.",
+  productivo: "Fuiste muy productivo hoy. Excelente desempeño.",
 };
 
 function prettyLabel(label) {
@@ -26,95 +60,228 @@ function prettyLabel(label) {
   );
 }
 
-// ✅ NUEVA: Función para convertir minutos a formato legible
 function formatearTiempo(minutos) {
-  if (!minutos || minutos === 0) return "0 min";
-
-  if (minutos >= 60) {
-    const horas = Math.floor(minutos / 60);
-    const minutosRestantes = minutos % 60;
-
-    if (minutosRestantes === 0) {
-      return `${horas}h`;
-    } else {
-      return `${horas}h ${minutosRestantes}min`;
-    }
+  const m = Number(minutos ?? 0) || 0;
+  if (m <= 0) return "0 min";
+  if (m >= 60) {
+    const horas = Math.floor(m / 60);
+    const minutosRestantes = m % 60;
+    return minutosRestantes === 0 ? `${horas}h` : `${horas}h ${minutosRestantes}min`;
   }
-
-  return `${minutos} min`;
+  return `${m} min`;
 }
 
-// ✅ COMPONENTE SKELETON LOADING (Tarjeta de carga)
-function SkeletonCard() {
+function toProb(v) {
+  const n = typeof v === "string" ? Number.parseFloat(v) : Number(v);
+  if (!Number.isFinite(n)) return 0;
+  if (n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
+}
+
+function getPredPalette(label) {
+  switch (label) {
+    case "productivo":
+      return {
+        chipColor: "success",
+        bar: "success",
+        avatarBg: "#10b981",
+        gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+        shadowColor: "rgba(16, 185, 129, 0.3)"
+      };
+    case "no_productivo":
+      return {
+        chipColor: "error",
+        bar: "error",
+        avatarBg: "#ef4444",
+        gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+        shadowColor: "rgba(239, 68, 68, 0.3)"
+      };
+    default:
+      return {
+        chipColor: "warning",
+        bar: "warning",
+        avatarBg: "#f59e0b",
+        gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+        shadowColor: "rgba(245, 158, 11, 0.3)"
+      };
+  }
+}
+
+function ProbRow({ label, value, color }) {
+  const pct = Math.round(value * 1000) / 10;
+
+  const colorMap = {
+    error: "#ef4444",
+    warning: "#f59e0b",
+    success: "#10b981"
+  };
+
   return (
-    <div className="productividad-card skeleton-card">
-      <div className="productividad-card-header">
-        <div className="user-info">
-          <div className="user-avatar skeleton-avatar"></div>
-          <div className="skeleton-text-group">
-            <div className="skeleton-text skeleton-title"></div>
-            <div className="skeleton-text skeleton-subtitle"></div>
-          </div>
-        </div>
-        <div className="skeleton-badge"></div>
-      </div>
-
-      <div className="skeleton-text skeleton-description"></div>
-
-      <div className="productividad-card-stats">
-        <div className="stat-item">
-          <div className="stat-icon skeleton-icon"></div>
-          <div className="stat-content">
-            <div className="skeleton-text skeleton-stat-value"></div>
-            <div className="skeleton-text skeleton-stat-label"></div>
-          </div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon skeleton-icon"></div>
-          <div className="stat-content">
-            <div className="skeleton-text skeleton-stat-value"></div>
-            <div className="skeleton-text skeleton-stat-label"></div>
-          </div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon skeleton-icon"></div>
-          <div className="stat-content">
-            <div className="skeleton-text skeleton-stat-value"></div>
-            <div className="skeleton-text skeleton-stat-label"></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="skeleton-progress">
-        <div className="skeleton-text skeleton-progress-item"></div>
-        <div className="skeleton-text skeleton-progress-item"></div>
-        <div className="skeleton-text skeleton-progress-item"></div>
-      </div>
-    </div>
+    <Stack direction="row" spacing={2} alignItems="center">
+      <Box sx={{ minWidth: 110 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+          {label}
+        </Typography>
+      </Box>
+      <Box sx={{ flex: 1, position: "relative" }}>
+        <Box
+          sx={{
+            height: 8,
+            borderRadius: 999,
+            bgcolor: alpha(colorMap[color], 0.1),
+            overflow: "hidden",
+          }}
+        >
+          <Box
+            sx={{
+              height: "100%",
+              width: `${Math.min(100, Math.max(0, value * 100))}%`,
+              background: `linear-gradient(90deg, ${colorMap[color]} 0%, ${alpha(colorMap[color], 0.8)} 100%)`,
+              borderRadius: 999,
+              transition: "width 0.6s ease-in-out",
+            }}
+          />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 56, textAlign: "right" }}>
+        <Typography variant="body2" sx={{ color: colorMap[color], fontWeight: 700 }}>
+          {pct.toFixed(1)}%
+        </Typography>
+      </Box>
+    </Stack>
   );
 }
 
-const BACKEND_URL = "https://backend-xycc.onrender.com";
+function LoadingCard() {
+  return (
+    <Card
+      sx={{
+        borderRadius: 3,
+        bgcolor: "background.paper",
+        border: "1px solid",
+        borderColor: "divider"
+      }}
+    >
+      <CardContent sx={{ p: 3 }}>
+        <Stack spacing={2.5}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Skeleton variant="circular" width={48} height={48} />
+            <Box sx={{ flex: 1 }}>
+              <Skeleton width="50%" height={24} />
+              <Skeleton width="70%" height={16} sx={{ mt: 0.5 }} />
+            </Box>
+            <Skeleton width={100} height={28} sx={{ borderRadius: 999 }} />
+          </Stack>
+          <Divider />
+          <Grid container spacing={2}>
+            <Grid item xs={4}>
+              <Skeleton height={80} />
+            </Grid>
+            <Grid item xs={4}>
+              <Skeleton height={80} />
+            </Grid>
+            <Grid item xs={4}>
+              <Skeleton height={80} />
+            </Grid>
+          </Grid>
+          <Skeleton height={120} />
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
 
-export default function ProductividadCards() {
+function StatCard({ icon: Icon, value, label, color = "primary" }) {
+  const colorMap = {
+    primary: "#3b82f6",
+    success: "#10b981",
+    warning: "#f59e0b",
+    error: "#ef4444",
+  };
+
+  return (
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        bgcolor: alpha(colorMap[color], 0.08),
+        border: "1px solid",
+        borderColor: alpha(colorMap[color], 0.2),
+        textAlign: "center",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          bgcolor: alpha(colorMap[color], 0.12),
+          transform: "translateY(-2px)",
+        }
+      }}
+    >
+      <Icon sx={{ fontSize: 28, color: colorMap[color], mb: 1 }} />
+      <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5 }}>
+        {value}
+      </Typography>
+      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
+export default function Productividad() {
+  const navigate = useNavigate();
+
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [fecha, setFecha] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [filtroEstado, setFiltroEstado] = useState("todos"); // ✅ NUEVO
-  const [busqueda, setBusqueda] = useState(""); // ✅ NUEVO
+
+  const [, setSearchParams] = useSearchParams();
+
+  const location = useLocation();
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const [fecha, setFecha] = useState(() => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get("date") || today;
+  });
+
+  // ✅ Cuando cambie la URL (back/forward o navigate), sincroniza fecha
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const d = sp.get("date") || today;
+    setFecha(d);
+  }, [location.search, today]);
+
+
+  const [filtroEstado, setFiltroEstado] = useState("todos");
+  const [busqueda, setBusqueda] = useState("");
+
+
+  const addDaysISO = (iso, delta) => {
+    // iso: "YYYY-MM-DD"
+    const d = new Date(`${iso}T00:00:00`);
+    d.setDate(d.getDate() + delta);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const setFechaAndUrl = (next) => {
+    setFecha(next);
+
+    // Guarda la fecha en la URL
+    if (!next || next === today) {
+      setSearchParams({}, { replace: true }); // si quieres historial por cada cambio, pon replace:false
+    } else {
+      setSearchParams({ date: next }, { replace: true });
+    }
+  };
 
   const cargar = useCallback(async () => {
     setLoading(true);
     setErr("");
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const url =
-        fecha === today
-          ? `${BACKEND_URL}/api/productividad/hoy`
-          : `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
+      const isToday = fecha === today;
+      const url = isToday
+        ? `${BACKEND_URL}/api/productividad/hoy`
+        : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
@@ -124,7 +291,7 @@ export default function ProductividadCards() {
     } finally {
       setLoading(false);
     }
-  }, [fecha]);
+  }, [fecha, today]);
 
 
   useEffect(() => {
@@ -133,280 +300,417 @@ export default function ProductividadCards() {
     return () => clearInterval(id);
   }, [cargar]);
 
-  // ✅ NUEVO: Función para filtrar usuarios
-  const usuariosFiltrados = useCallback(() => {
-    if (!data?.users) return [];
+  const counts = useMemo(() => {
+    const base = { todos: 0, productivo: 0, regular: 0, no_productivo: 0, sin_actividad: 0 };
+    if (!data?.users) return base;
 
-    let usuarios = data.users;
-
-    // Filtro por búsqueda (nombre/email)
-    if (busqueda.trim()) {
-      const busquedaLower = busqueda.toLowerCase();
-      usuarios = usuarios.filter((u) =>
-        u.colaborador?.toLowerCase().includes(busquedaLower)
-      );
-    }
-
-    // Filtro por estado de predicción
-    if (filtroEstado !== "todos") {
-      if (filtroEstado === "sin_actividad") {
-        usuarios = usuarios.filter((u) => u.tiempo_total === 0);
-      } else {
-        usuarios = usuarios.filter(
-          (u) => (u.prediccion?.label || "regular") === filtroEstado
-        );
-      }
-    }
-
-    return usuarios;
-  }, [data, busqueda, filtroEstado]);
-
-  const usuarios = usuariosFiltrados();
-
-  // ✅ NUEVO: Contar por estado
-  const contadores = useCallback(() => {
-    if (!data?.users) return { todos: 0, productivo: 0, regular: 0, no_productivo: 0, sin_actividad: 0 };
-
-    const counts = {
-      todos: data.users.length,
-      productivo: 0,
-      regular: 0,
-      no_productivo: 0,
-      sin_actividad: 0,
-    };
-
+    base.todos = data.users.length;
     for (const u of data.users) {
-      if (u.tiempo_total === 0) {
-        counts.sin_actividad++;
-      } else {
-        const label = u.prediccion?.label || "regular";
-        counts[label]++;
-      }
+      if ((Number(u?.tiempo_total ?? 0) || 0) === 0) base.sin_actividad += 1;
+      else base[(u?.prediccion?.label || "regular")] += 1;
     }
-
-    return counts;
+    return base;
   }, [data]);
 
-  const counts = contadores();
+  const usuarios = useMemo(() => {
+    if (!data?.users) return [];
+    let usuariosRaw = data.users;
 
-  if (err) return <p className="error-message">{err}</p>;
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      usuariosRaw = usuariosRaw.filter((u) => String(u?.colaborador || "").toLowerCase().includes(q));
+    }
+
+    if (filtroEstado !== "todos") {
+      if (filtroEstado === "sin_actividad") {
+        usuariosRaw = usuariosRaw.filter((u) => (Number(u?.tiempo_total ?? 0) || 0) === 0);
+      } else {
+        usuariosRaw = usuariosRaw.filter((u) => (u?.prediccion?.label || "regular") === filtroEstado);
+      }
+    }
+
+    return usuariosRaw;
+  }, [data, busqueda, filtroEstado]);
+
+  const onGoDetalle = useCallback(
+    (userId) => {
+      const base = `/productividad/${encodeURIComponent(userId)}`;
+      const url = fecha === today ? base : `${base}?date=${encodeURIComponent(fecha)}`;
+
+      // ✅ guardo EXACTAMENTE la url actual (incluye ?date=...)
+      const from = location.pathname + location.search;
+
+      navigate(url, { state: { from } });
+    },
+    [navigate, fecha, today, location.pathname, location.search]
+  );
+
+
+  if (err) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Paper
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            bgcolor: alpha("#ef4444", 0.1),
+            border: "1px solid",
+            borderColor: alpha("#ef4444", 0.3),
+          }}
+        >
+          <Typography color="error" variant="body1" fontWeight={600}>
+            {err}
+          </Typography>
+        </Paper>
+      </Container>
+    );
+  }
 
   return (
-    <div className="productividad-container">
-      <div className="productividad-header">
-        <div className="header-title">
-          <h2>Panel de Productividad</h2>
-          <p className="header-subtitle">
-            {data ? `Prediccion del dia: ${data.date}` : "Cargando..."}
-          </p>
-        </div>
+    <Box sx={{ bgcolor: "#0a0e1a", minHeight: "100vh", py: 4 }}>
+      <Container maxWidth="xl">
+        <Stack spacing={4}>
+          {/* Header */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={3}
+            alignItems={{ sm: "center" }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                <TrendingUpIcon sx={{ fontSize: 40, color: "#3b82f6" }} />
+                <Typography
+                  variant="h3"
+                  fontWeight={900}
+                  sx={{
+                    background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  Panel de Productividad
+                </Typography>
+              </Stack>
+              <Typography variant="body1" sx={{ color: "text.secondary", ml: 7 }}>
+                {data ? `Predicción del día: ${data.date}` : "Cargando datos..."}
+              </Typography>
+            </Box>
 
-        <div className="header-controls">
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="date-input"
-          />
-          <button onClick={cargar} disabled={loading} className="search-button">
-            {loading ? "Buscando..." : "Actualizar"}
-          </button>
-        </div>
-      </div>
+            <Stack direction="row" spacing={2} alignItems="center">
+  {/* Navegador de fecha (tipo Notion) */}
+  <Stack direction="row" spacing={1} alignItems="center">
+    <IconButton
+      onClick={() => setFechaAndUrl(addDaysISO(fecha, -1))}
+      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+      aria-label="Día anterior"
+    >
+      <ChevronLeftRoundedIcon />
+    </IconButton>
 
-      {/* ✅ NUEVO: Filtros por estado */}
-      {data && (
-        <>
-          <div className="productividad-filters">
-            <button
-              className={`filter-button ${filtroEstado === "todos" ? "active" : ""}`}
-              onClick={() => setFiltroEstado("todos")}
+    <TextField
+      type="date"
+      size="small"
+      value={fecha}
+      onChange={(e) => setFechaAndUrl(e.target.value)}
+      sx={{
+        minWidth: 170,
+        "& .MuiOutlinedInput-root": {
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          "&:hover": { bgcolor: alpha("#fff", 0.05) },
+        },
+      }}
+    />
+
+    <IconButton
+      onClick={() => setFechaAndUrl(addDaysISO(fecha, 1))}
+      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+      aria-label="Día siguiente"
+    >
+      <ChevronRightRoundedIcon />
+    </IconButton>
+  </Stack>
+
+  <Button
+    variant="contained"
+    startIcon={<RefreshOutlinedIcon />}
+    onClick={cargar}
+    disabled={loading}
+    sx={{
+      borderRadius: 2,
+      px: 3,
+      background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+      textTransform: "none",
+      fontWeight: 700,
+      boxShadow: "0 4px 14px rgba(59, 130, 246, 0.3)",
+      "&:hover": {
+        background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+        boxShadow: "0 6px 20px rgba(59, 130, 246, 0.4)",
+      },
+      "&:disabled": { background: alpha("#3b82f6", 0.3) },
+    }}
+  >
+    {loading ? "Cargando..." : "Actualizar"}
+  </Button>
+</Stack>
+
+          </Stack>
+
+          {/* Filters */}
+          {data && (
+            <Card
+              sx={{
+                borderRadius: 3,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+              }}
             >
-              Todos ({counts.todos})
-            </button>
-            <button
-              className={`filter-button productivo ${filtroEstado === "productivo" ? "active" : ""}`}
-              onClick={() => setFiltroEstado("productivo")}
-            >
-              Productivo ({counts.productivo})
-            </button>
-            <button
-              className={`filter-button regular ${filtroEstado === "regular" ? "active" : ""}`}
-              onClick={() => setFiltroEstado("regular")}
-            >
-              Regular ({counts.regular})
-            </button>
-            <button
-              className={`filter-button no-productivo ${filtroEstado === "no_productivo" ? "active" : ""}`}
-              onClick={() => setFiltroEstado("no_productivo")}
-            >
-              No productivo ({counts.no_productivo})
-            </button>
-            <button
-              className={`filter-button sin-actividad ${filtroEstado === "sin_actividad" ? "active" : ""}`}
-              onClick={() => setFiltroEstado("sin_actividad")}
-            >
-              Sin actividad ({counts.sin_actividad})
-            </button>
-          </div>
+              <CardContent sx={{ p: 3 }}>
+                <Stack spacing={3}>
+                  <ToggleButtonGroup
+                    value={filtroEstado}
+                    exclusive
+                    onChange={(_, v) => v && setFiltroEstado(v)}
+                    sx={{
+                      flexWrap: "wrap",
+                      gap: 1,
+                      "& .MuiToggleButton-root": {
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        px: 2.5,
+                        py: 1,
+                        "&.Mui-selected": {
+                          background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+                          color: "white",
+                          borderColor: "transparent",
+                          "&:hover": {
+                            background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <ToggleButton value="todos">Todos ({counts.todos})</ToggleButton>
+                    <ToggleButton value="productivo">✓ Productivo ({counts.productivo})</ToggleButton>
+                    <ToggleButton value="regular">~ Regular ({counts.regular})</ToggleButton>
+                    <ToggleButton value="no_productivo">✗ No productivo ({counts.no_productivo})</ToggleButton>
+                    <ToggleButton value="sin_actividad">○ Sin actividad ({counts.sin_actividad})</ToggleButton>
+                  </ToggleButtonGroup>
 
-          {/* ✅ NUEVO: Buscador */}
-          <div className="productividad-search">
-            <input
-              type="text"
-              placeholder="Buscar usuario..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="search-input"
-            />
-          </div>
-        </>
-      )}
+                  <TextField
+                    size="medium"
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
 
-      <div className="productividad-grid">
-        {loading ? (
-          // ✅ MOSTRAR SKELETONS MIENTRAS CARGA
-          <>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={`skeleton-${i}`} />
-            ))}
-          </>
-        ) : data && usuarios.length === 0 ? (
-          <div className="no-results">
-            <p>No se encontraron usuarios con los filtros seleccionados.</p>
-          </div>
-        ) : data ? (
-          usuarios.map((u) => {
-            const prediccion = u.prediccion?.label || "regular";
-            const probabilities = u.prediccion?.probabilities || {};
+                    placeholder="Buscar usuario por nombre..."
+                    InputProps={{
+                      startAdornment: <SearchOutlinedIcon sx={{ mr: 1.5, color: "text.secondary" }} />
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        bgcolor: alpha("#fff", 0.03),
+                        "&:hover": {
+                          bgcolor: alpha("#fff", 0.05),
+                        }
+                      }
+                    }}
+                  />
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
 
-            return (
-              <div
-                key={u.user_id}
-                className={`productividad-card ${prediccion}`}
-              >
-                <div className="productividad-card-header">
-                  <div className="user-info">
-                    <div className={`user-avatar ${prediccion}`}>
-                      {u.colaborador?.charAt(0)?.toUpperCase() || "U"}
-                    </div>
-                    <div>
-                      <h3>{u.colaborador}</h3>
-                      {/* <small>{u.user_id}</small> */}
-                    </div>
-                  </div>
-                  <span className={`productividad-badge ${prediccion}`}>
-                    {prettyLabel(prediccion)}
-                  </span>
-                </div>
+          {/* User Cards Grid */}
+          <Grid container spacing={3}>
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Grid item xs={12} sm={6} lg={4} key={`loading-${i}`}>
+                  <LoadingCard />
+                </Grid>
+              ))
+            ) : data && usuarios.length === 0 ? (
+              <Grid item xs={12}>
+                <Paper
+                  sx={{
+                    borderRadius: 3,
+                    p: 6,
+                    textAlign: "center",
+                    bgcolor: "background.paper",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <SearchOutlinedIcon sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+                  <Typography variant="h6" sx={{ color: "text.secondary" }}>
+                    No se encontraron usuarios con los filtros seleccionados
+                  </Typography>
+                </Paper>
+              </Grid>
+            ) : (
+              usuarios.map((u) => {
+                const pred = u?.prediccion ?? {};
+                const label = pred?.label || "regular";
+                const palette = getPredPalette(label);
 
-                <p className="productividad-card-description">
-                  {DESCRIPTIONS[prediccion]}
-                </p>
+                const probsRaw = pred?.probabilidades ?? pred?.probabilities ?? {};
+                const probabilities = {
+                  no_productivo: toProb(probsRaw.no_productivo),
+                  regular: toProb(probsRaw.regular),
+                  productivo: toProb(probsRaw.productivo),
+                };
 
-                <div className="productividad-card-stats">
-                  <div className="stat-item">
-                    <div className="stat-icon actividades">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                        <path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" />
-                        <path d="M12 11h4" />
-                        <path d="M12 16h4" />
-                        <path d="M8 11h.01" />
-                        <path d="M8 16h.01" />
-                      </svg>
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-value">{u.actividades}</div>
-                      <div className="stat-label">Actividades</div>
-                    </div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-icon revisiones">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                        <path d="m9 12 2 2 4-4" />
-                      </svg>
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-value">{u.revisiones}</div>
-                      <div className="stat-label">Revisiones</div>
-                    </div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-icon tiempo">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-value">{formatearTiempo(u.tiempo_total)}</div>
-                      <div className="stat-label">
-                        Tiempo Total</div>
-                    </div>
-                  </div>
-                </div>
+                return (
+                  <Grid item xs={12} sm={6} lg={4} key={u.user_id}>
+                    <Card
+                      sx={{
+                        borderRadius: 3,
+                        bgcolor: "background.paper",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        transition: "all 0.3s ease",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                          boxShadow: `0 12px 32px ${palette.shadowColor}`,
+                          borderColor: palette.avatarBg,
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: palette.gradient,
+                        }
+                      }}
+                    >
+                      <CardActionArea onClick={() => onGoDetalle(u.user_id)}>
+                        <CardContent sx={{ p: 3 }}>
+                          <Stack spacing={2.5}>
+                            {/* User Header */}
+                            <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between">
+                              <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+                                <Avatar
+                                  sx={{
+                                    width: 48,
+                                    height: 48,
+                                    background: palette.gradient,
+                                    fontWeight: 900,
+                                    fontSize: 20,
+                                    boxShadow: `0 4px 12px ${palette.shadowColor}`,
+                                  }}
+                                >
+                                  {(u?.colaborador || "U").charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                  <Typography
+                                    variant="h6"
+                                    fontWeight={800}
+                                    noWrap
+                                    sx={{ color: "text.primary", mb: 0.5 }}
+                                  >
+                                    {u?.colaborador || "Usuario"}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "text.secondary",
+                                      display: "block",
+                                      lineHeight: 1.4
+                                    }}
+                                  >
+                                    {DESCRIPTIONS[label] || ""}
+                                  </Typography>
+                                </Box>
+                              </Stack>
 
-                {/* ✅ NUEVO: Detalles de revisiones */}
-                <div className="productividad-card-details">
-                  <div className="detail-item">
-                    <span className="detail-label">Revisiones con duración:</span>
-                    <span className="detail-value">{u.revisiones_con_duracion}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Revisiones sin duración:</span>
-                    <span className="detail-value">{u.revisiones_sin_duracion}</span>
-                  </div>
-                </div>
+                              <Chip
+                                label={prettyLabel(label)}
+                                sx={{
+                                  fontWeight: 800,
+                                  borderRadius: 999,
+                                  background: palette.gradient,
+                                  color: "white",
+                                  border: "none",
+                                  boxShadow: `0 2px 8px ${palette.shadowColor}`,
+                                }}
+                              />
+                            </Stack>
 
-                <div className="productividad-card-progress">
-                  <h4 className="progress-title">Distribucion de Probabilidades</h4>
-                  <div className="progress-item">
-                    <div className="progress-label">
-                      <span className="progress-dot no-productivo"></span>
-                      No Productivo
-                    </div>
-                    <div className="progress-bar-container">
-                      <div
-                        className="progress-bar no-productivo"
-                        style={{ width: `${(probabilities.no_productivo || 0) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="progress-percentage">{((probabilities.no_productivo || 0) * 100).toFixed(1)}%</div>
-                  </div>
-                  <div className="progress-item">
-                    <div className="progress-label">
-                      <span className="progress-dot regular"></span>
-                      Regular
-                    </div>
-                    <div className="progress-bar-container">
-                      <div
-                        className="progress-bar regular"
-                        style={{ width: `${(probabilities.regular || 0) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="progress-percentage">{((probabilities.regular || 0) * 100).toFixed(1)}%</div>
-                  </div>
-                  <div className="progress-item">
-                    <div className="progress-label">
-                      <span className="progress-dot productivo"></span>
-                      Productivo
-                    </div>
-                    <div className="progress-bar-container">
-                      <div
-                        className="progress-bar productivo"
-                        style={{ width: `${(probabilities.productivo || 0) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="progress-percentage">{((probabilities.productivo || 0) * 100).toFixed(1)}%</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        ) : null}
-      </div>
-    </div>
+                            <Divider sx={{ borderColor: alpha("#fff", 0.08) }} />
+
+                            {/* Stats Grid */}
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={4}>
+                                <StatCard
+                                  icon={ChecklistOutlinedIcon}
+                                  value={Number(u?.actividades ?? 0) || 0}
+                                  label="Actividades"
+                                  color="primary"
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <StatCard
+                                  icon={AssignmentTurnedInOutlinedIcon}
+                                  value={Number(u?.revisiones ?? 0) || 0}
+                                  label="Revisiones"
+                                  color="success"
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <StatCard
+                                  icon={AccessTimeOutlinedIcon}
+                                  value={formatearTiempo(u?.tiempo_total)}
+                                  label="Tiempo"
+                                  color="warning"
+                                />
+                              </Grid>
+                            </Grid>
+
+                            {/* Probability Distribution */}
+                            <Box
+                              sx={{
+                                p: 2.5,
+                                borderRadius: 2,
+                                bgcolor: alpha("#fff", 0.02),
+                                border: "1px solid",
+                                borderColor: alpha("#fff", 0.05),
+                              }}
+                            >
+                              <Typography
+                                variant="subtitle2"
+                                fontWeight={800}
+                                sx={{ mb: 2, color: "text.primary", textTransform: "uppercase", letterSpacing: 0.5 }}
+                              >
+                                Distribución de probabilidades
+                              </Typography>
+
+                              <Stack spacing={1.5}>
+                                <ProbRow label="No productivo" value={probabilities.no_productivo} color="error" />
+                                <ProbRow label="Regular" value={probabilities.regular} color="warning" />
+                                <ProbRow label="Productivo" value={probabilities.productivo} color="success" />
+                              </Stack>
+                            </Box>
+                          </Stack>
+                        </CardContent>
+                      </CardActionArea>
+                    </Card>
+                  </Grid>
+                );
+              })
+            )}
+          </Grid>
+        </Stack>
+      </Container>
+    </Box>
   );
 }
