@@ -17,18 +17,18 @@ function Header() {
 
   return (
     <AppBar
-      position="fixed"
-      elevation={0}
-      sx={{
-        bgcolor: "#0f1419",
-        borderBottom: "1px solid",
-        borderColor: alpha("#fff", 0.08),
-        backdropFilter: "blur(8px)",
-        zIndex: 1201,
-        left: 280, // Width of sidebar
-        width: "calc(100% - 280px)",
-      }}
-    >
+  position="fixed"
+  elevation={0}
+  sx={{
+    bgcolor: "#0f1419",
+    borderBottom: "none",
+    boxShadow: "none",
+    zIndex: 1201,
+    left: 280,
+    width: "calc(100% - 280px)",
+  }}
+>
+
       <Toolbar
         sx={{
           minHeight: { xs: 64, sm: 72 },

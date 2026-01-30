@@ -27,6 +27,7 @@ const COLORS = {
   no_productivo: "#ef4444",
 };
 
+// const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-xycc.onrender.com";
 
 function formatearTiempo(minutos) {
@@ -44,7 +45,7 @@ function formatearTiempo(minutos) {
 function ModalGrafica({ titulo, tipo, datos, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{titulo}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
@@ -52,11 +53,11 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
         
         <div className="modal-body">
           {tipo === "barras_tiempo" && (
-            <ResponsiveContainer width="100%" height={600}>
-              <BarChart data={datos} layout="vertical" margin={{ top: 5, right: 30, left: 200, bottom: 5 }}>
+            <ResponsiveContainer width="100%" height={Math.max(800, datos.length * 40)}>
+              <BarChart data={datos} layout="vertical" margin={{ top: 20, right: 30, left: 220, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis type="number" tick={{ fontSize: 12 }} />
-                <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11 }} />
+                <XAxis type="number" tick={{ fontSize: 14 }} />
+                <YAxis dataKey="nombre" type="category" tick={{ fontSize: 13 }} width={200} />
                 <Tooltip
                   formatter={(value) => formatearTiempo(value)}
                   contentStyle={{
@@ -64,6 +65,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                     border: "1px solid #374151",
                     borderRadius: "8px",
                     color: "#fff",
+                    fontSize: "14px",
                   }}
                 />
                 <Bar dataKey="tiempo" fill={COLORS.productivo} radius={[0, 8, 8, 0]} />
@@ -72,29 +74,71 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
           )}
           
           {tipo === "actividades_revisiones" && (
-            <ResponsiveContainer width="100%" height={600}>
-              <BarChart data={datos} margin={{ top: 5, right: 30, left: 30, bottom: 100 }}>
+            <ResponsiveContainer width="100%" height={Math.max(800, datos.length * 50)}>
+              <BarChart data={datos} margin={{ top: 20, right: 30, left: 30, bottom: 150 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis 
                   dataKey="nombre" 
-                  tick={{ fontSize: 10 }} 
+                  tick={{ fontSize: 11 }} 
                   angle={-45} 
                   textAnchor="end" 
-                  height={120}
+                  height={140}
                 />
-                <YAxis tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 14 }} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#1f2937",
                     border: "1px solid #374151",
                     borderRadius: "8px",
                     color: "#fff",
+                    fontSize: "14px",
                   }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: "14px" }} />
                 <Bar dataKey="actividades" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                 <Bar dataKey="revisiones" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
               </BarChart>
+            </ResponsiveContainer>
+          )}
+
+          {tipo === "distribucion" && (
+            <ResponsiveContainer width="100%" height={600}>
+              <PieChart>
+                <Pie
+                  data={datos}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={true}
+                  label={({ name, count, percent }) =>
+                    `${name}: ${count} usuarios (${(percent * 100).toFixed(1)}%)`
+                  }
+                  outerRadius={200}
+                  fill="#8884d8"
+                  dataKey="count"
+                >
+                  {datos.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name, props) => [
+                    `${value} usuarios (${(props.payload.percent * 100).toFixed(1)}%)`,
+                    props.payload.name
+                  ]}
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontSize: "14px",
+                  }}
+                />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  wrapperStyle={{ fontSize: "14px" }}
+                />
+              </PieChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -205,6 +249,13 @@ export default function ReportesDiarios() {
     return () => clearInterval(interval);
   }, [isToday, autoRefresh, cargarDatos]);
 
+  // Función para cambiar de día
+  const cambiarDia = (dias) => {
+    const fechaActual = new Date(fecha);
+    fechaActual.setDate(fechaActual.getDate() + dias);
+    setFecha(fechaActual.toISOString().slice(0, 10));
+  };
+
   const procesarDatosGenerales = useCallback(() => {
     if (!data?.users) return [];
 
@@ -219,10 +270,27 @@ export default function ReportesDiarios() {
       contadores[label]++;
     });
 
+    const total = data.users.length;
+    
     return [
-      { name: "Productivo", count: contadores.productivo, fill: COLORS.productivo },
-      { name: "Regular", count: contadores.regular, fill: COLORS.regular },
-      { name: "No Productivo", count: contadores.no_productivo, fill: COLORS.no_productivo },
+      { 
+        name: "Productivo", 
+        count: contadores.productivo, 
+        fill: COLORS.productivo,
+        percent: contadores.productivo / total
+      },
+      { 
+        name: "Regular", 
+        count: contadores.regular, 
+        fill: COLORS.regular,
+        percent: contadores.regular / total
+      },
+      { 
+        name: "No Productivo", 
+        count: contadores.no_productivo, 
+        fill: COLORS.no_productivo,
+        percent: contadores.no_productivo / total
+      },
     ].filter(item => item.count > 0);
   }, [data]);
 
@@ -263,7 +331,7 @@ export default function ReportesDiarios() {
       estado: user.prediccion?.label || "regular",
     }));
 
-  // Datos para gráfica de barras - TODOS (para modal)
+  // Datos para gráfica de barras - TODOS (para modal) - SIN LÍMITE
   const datosUsuariosCompletos = usuarios
     .sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0))
     .map(user => ({
@@ -301,14 +369,31 @@ export default function ReportesDiarios() {
             <p>Análisis detallado del desempeño {isToday ? "en tiempo real" : "de la fecha seleccionada"}</p>
           </div>
           <div className="header-controls">
-            <div className="control-group">
-              <label>Fecha:</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="date-input"
-              />
+            <div className="date-navigation">
+              <button 
+                onClick={() => cambiarDia(-1)} 
+                className="btn-fecha-nav"
+                title="Día anterior"
+              >
+                ◀
+              </button>
+              <div className="control-group" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Fecha:</label>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="date-input"
+                />
+              </div>
+              <button 
+                onClick={() => cambiarDia(1)} 
+                className="btn-fecha-nav"
+                title="Día siguiente"
+                disabled={isToday}
+              >
+                ▶
+              </button>
             </div>
             
             {isToday && (
@@ -351,8 +436,9 @@ export default function ReportesDiarios() {
             </div>
 
             <div className="graphs-grid">
-              {/* Gráfica Circular - Distribución */}
-              <div className="graph-card">
+              {/* Gráfica Circular - Distribución (Clickeable) */}
+              <div className="graph-card graph-clickable expandible" onClick={() => setModalActivo('distribucion')}>
+                <div className="card-badge">👆 Haz clic para ver detalles</div>
                 <h3>🎯 Distribución de Productividad</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
@@ -385,9 +471,9 @@ export default function ReportesDiarios() {
               </div>
 
               {/* Gráfica de Barras Verticales - Top Usuarios por Tiempo (Clickeable) */}
-              <div className="graph-card expandible" onClick={() => setModalActivo('tiempo')}>
-                <div className="card-badge">Haz clic para ver todos</div>
-                <h3>⏱️ Top Usuarios por Tiempo</h3>
+              <div className="graph-card graph-clickable" onClick={() => setModalActivo('tiempo')}>
+                <div className="card-badge">👆 Haz clic para ver todos ({usuarios.length})</div>
+                <h3>⏱️ Top 8 Usuarios por Tiempo</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={datosUsuariosPreview} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -410,9 +496,9 @@ export default function ReportesDiarios() {
 
             <div className="graphs-grid">
               {/* Gráfica de Barras - Actividades y Revisiones (Clickeable) */}
-              <div className="graph-card expandible" onClick={() => setModalActivo('actividades')}>
-                <div className="card-badge">Haz clic para ver todos</div>
-                <h3>📋 Actividades vs Revisiones</h3>
+              <div className="graph-card graph-clickable" onClick={() => setModalActivo('actividades')}>
+                <div className="card-badge">👆 Haz clic para ver todos ({usuarios.length})</div>
+                <h3>📋 Top 8 Actividades vs Revisiones</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={datosUsuariosPreview}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -562,9 +648,18 @@ export default function ReportesDiarios() {
       </div>
 
       {/* Modales de gráficas expandidas */}
+      {modalActivo === 'distribucion' && (
+        <ModalGrafica
+          titulo={`🎯 Distribución Detallada de Productividad (${usuarios.length} usuarios)`}
+          tipo="distribucion"
+          datos={distribucion}
+          onClose={() => setModalActivo(null)}
+        />
+      )}
+
       {modalActivo === 'tiempo' && (
         <ModalGrafica
-          titulo="📊 Todos los Usuarios - Tiempo Total"
+          titulo={`📊 Todos los Usuarios - Tiempo Total (${usuarios.length} colaboradores)`}
           tipo="barras_tiempo"
           datos={datosUsuariosCompletos}
           onClose={() => setModalActivo(null)}
@@ -573,7 +668,7 @@ export default function ReportesDiarios() {
 
       {modalActivo === 'actividades' && (
         <ModalGrafica
-          titulo="📋 Todos los Usuarios - Actividades vs Revisiones"
+          titulo={`📋 Todos los Usuarios - Actividades vs Revisiones (${usuarios.length} colaboradores)`}
           tipo="actividades_revisiones"
           datos={datosUsuariosCompletos}
           onClose={() => setModalActivo(null)}

@@ -32,33 +32,33 @@
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 }
 
-/* ===== VARIABLES TEMA CLARO ===== */
+/* ===== VARIABLES TEMA CLARO (Ahora también azul oscuro) ===== */
 [data-theme="light"] {
   /* Colores de estado */
-  --color-productivo: #10b981;
-  --color-regular: #f59e0b;
-  --color-no-productivo: #ef4444;
+  --color-productivo: #34d399;
+  --color-regular: #fbbf24;
+  --color-no-productivo: #f87171;
   
   /* Primario */
-  --color-primary: #ffffff;
-  --color-secondary: #f3f4f6;
-  --color-tertiary: #e5e7eb;
+  --color-primary: #1a1f3a;
+  --color-secondary: #1e293b;
+  --color-tertiary: #334155;
   
   /* Texto */
-  --color-text: #1e293b;
-  --color-text-secondary: #475569;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
   --color-text-light: #94a3b8;
   
   /* Fondo */
-  --color-bg: #ffffff;
-  --color-card: #f9fafb;
-  --color-border: #e2e8f0;
+  --color-bg: #0f172a;
+  --color-card: #1e293b;
+  --color-border: #475569;
   
   /* Sombras */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 }
 
 :root, [data-theme] {
@@ -166,6 +166,59 @@ html, body {
   cursor: pointer;
 }
 
+/* ===== NAVEGACIÓN DE FECHAS ===== */
+.date-navigation {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-secondary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  transition: all 0.3s ease;
+}
+
+.date-navigation label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.btn-fecha-nav {
+  background: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--color-productivo);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+}
+
+.btn-fecha-nav:hover:not(:disabled) {
+  background: var(--color-productivo);
+  color: white;
+  border-color: var(--color-productivo);
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-fecha-nav:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-fecha-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .date-input {
   padding: 10px 14px;
   background: var(--color-primary);
@@ -175,6 +228,9 @@ html, body {
   font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 150px;
+  height: 40px;
+  color-scheme: dark;
 }
 
 .date-input:hover,
@@ -182,10 +238,6 @@ html, body {
   border-color: var(--color-productivo);
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1);
   outline: none;
-}
-
-[data-theme="dark"] .date-input {
-  color-scheme: dark;
 }
 
 [data-theme="light"] .date-input {
@@ -264,9 +316,15 @@ html, body {
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+/* Forzar fondo oscuro en las gráficas */
+.graph-card .recharts-wrapper,
+.graph-card .recharts-surface {
+  background: transparent !important;
 }
 
 .graph-card::before {
@@ -297,36 +355,59 @@ html, body {
   z-index: 2;
 }
 
-/* ===== GRAPH CARD EXPANDIBLE ===== */
-.graph-card.expandible {
-  cursor: pointer;
-  transition: all 0.3s ease;
+/* ===== GRAPH CARD EXPANDIBLE - CURSOR POINTER ===== */
+.graph-card.expandible,
+.graph-card.graph-clickable {
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.graph-card.expandible:hover {
-  transform: translateY(-6px);
+.graph-card.expandible:hover,
+.graph-card.graph-clickable:hover {
+  transform: translateY(-8px) scale(1.01);
   border-color: var(--color-productivo);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 16px 32px rgba(52, 211, 153, 0.25);
+}
+
+[data-theme="light"] .graph-card.expandible:hover,
+[data-theme="light"] .graph-card.graph-clickable:hover {
+  box-shadow: 0 16px 32px rgba(16, 185, 129, 0.2);
+}
+
+/* Asegurar cursor pointer en todos los elementos de las gráficas clickeables */
+.graph-card.expandible *,
+.graph-card.graph-clickable * {
+  cursor: pointer !important;
 }
 
 .card-badge {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: linear-gradient(135deg, var(--color-productivo), #10b981);
+  background: linear-gradient(135deg, var(--color-productivo) 0%, #10b981 100%);
   color: white;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
   box-shadow: var(--shadow-md);
+  pointer-events: none;
+  letter-spacing: 0.3px;
 }
 
-.graph-card.expandible:hover .card-badge {
+.graph-card.expandible:hover .card-badge,
+.graph-card.graph-clickable:hover .card-badge {
   opacity: 1;
+  transform: scale(1.08) translateY(-2px);
+  animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1.08) translateY(-2px); }
+  50% { transform: scale(1.12) translateY(-4px); }
 }
 
 /* ===== ESTILOS DE RECHARTS ===== */
@@ -354,17 +435,18 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
   animation: fadeIn 0.3s ease-out;
   transition: background 0.3s ease;
+  padding: 20px;
 }
 
-@keyframes fadeInModal {
+@keyframes fadeIn {
   from {
     opacity: 0;
   }
@@ -377,7 +459,7 @@ html, body {
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  max-width: 90%;
+  max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-xl);
@@ -385,15 +467,40 @@ html, body {
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
+.modal-content-large {
+  max-width: 95vw !important;
+  width: 95vw;
+}
+
 @keyframes slideUpModal {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
+}
+
+/* Scrollbar personalizado para modal */
+.modal-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: var(--color-secondary);
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--color-productivo) 0%, #10b981 100%);
+  border-radius: 10px;
+  border: 2px solid var(--color-secondary);
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #10b981 0%, var(--color-productivo) 100%);
 }
 
 .modal-header {
@@ -436,7 +543,7 @@ html, body {
   background: rgba(248, 113, 113, 0.2);
   border-color: var(--color-no-productivo);
   color: white;
-  transform: scale(1.1);
+  transform: scale(1.1) rotate(90deg);
 }
 
 [data-theme="light"] .modal-close {
@@ -453,7 +560,7 @@ html, body {
 
 .modal-body {
   padding: 24px;
-  min-height: 600px;
+  min-height: 400px;
 }
 
 /* ===== GRID DE ESTADÍSTICAS ===== */
@@ -783,15 +890,6 @@ html, body {
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .reportes-container {
   animation: fadeIn 0.6s ease-out;
 }
@@ -871,6 +969,10 @@ html, body {
   }
 
   .control-group {
+    width: 100%;
+  }
+
+  .date-navigation {
     width: 100%;
   }
 
@@ -974,6 +1076,17 @@ html, body {
     padding: 16px;
     min-height: 400px;
   }
+
+  .btn-fecha-nav {
+    min-width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+
+  .card-badge {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -986,8 +1099,8 @@ html, body {
   }
 
   .card-badge {
-    font-size: 10px;
-    padding: 4px 8px;
+    font-size: 9px;
+    padding: 5px 8px;
   }
 
   .stat-icon {
@@ -1009,7 +1122,8 @@ html, body {
     margin: 0 auto;
   }
 
-  .modal-content {
+  .modal-content,
+  .modal-content-large {
     max-width: 98%;
   }
 
@@ -1024,5 +1138,12 @@ html, body {
 
   .info-paginacion {
     font-size: 12px;
+  }
+
+  .btn-fecha-nav {
+    min-width: 35px;
+    height: 35px;
+    font-size: 1rem;
+    padding: 6px 10px;
   }
 }
