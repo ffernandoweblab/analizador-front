@@ -343,7 +343,7 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
 
 // Componente de estadística
 function StatCard({ icon: Icon, label, value, color }) {
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  // const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   
   return (
     <Card
@@ -407,7 +407,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 export default function ReportesDiarios() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  // const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");

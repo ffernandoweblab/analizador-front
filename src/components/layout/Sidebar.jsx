@@ -22,7 +22,7 @@ import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 export const SIDEBAR_WIDTH = 280;
-const HEADER_HEIGHT = { xs: 64, sm: 72 };
+// const HEADER_HEIGHT = { xs: 64, sm: 72 };
 
 
 function Sidebar() {
