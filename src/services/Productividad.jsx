@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import IconButton from "@mui/material/IconButton";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-
+import Grid from "@mui/material/Grid2";
 
 import {
   Avatar,
@@ -15,8 +15,6 @@ import {
   Chip,
   Container,
   Divider,
-  Grid,
-  LinearProgress,
   Skeleton,
   Stack,
   TextField,
@@ -35,7 +33,7 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 
-//const BACKEND_URL = "http://localhost:3001";
+// const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-xycc.onrender.com";
 
 const LABEL_PRETTY = {
@@ -175,13 +173,13 @@ function LoadingCard() {
           </Stack>
           <Divider />
           <Grid container spacing={2}>
-            <Grid item xs={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Skeleton height={80} />
             </Grid>
-            <Grid item xs={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Skeleton height={80} />
             </Grid>
-            <Grid item xs={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Skeleton height={80} />
             </Grid>
           </Grid>
@@ -237,7 +235,18 @@ export default function Productividad() {
   const [, setSearchParams] = useSearchParams();
 
   const location = useLocation();
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  
+  // ✅ CORRECCIÓN: Usar zona horaria America/Mexico_City en lugar de UTC
+  const today = useMemo(() => {
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return fmt.format(now);
+  }, []);
 
   const [fecha, setFecha] = useState(() => {
     const sp = new URLSearchParams(location.search);
@@ -398,63 +407,62 @@ export default function Productividad() {
             </Box>
 
             <Stack direction="row" spacing={2} alignItems="center">
-  {/* Navegador de fecha (tipo Notion) */}
-  <Stack direction="row" spacing={1} alignItems="center">
-    <IconButton
-      onClick={() => setFechaAndUrl(addDaysISO(fecha, -1))}
-      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
-      aria-label="Día anterior"
-    >
-      <ChevronLeftRoundedIcon />
-    </IconButton>
+              {/* Navegador de fecha (tipo Notion) */}
+              <Stack direction="row" spacing={1} alignItems="center">
+                <IconButton
+                  onClick={() => setFechaAndUrl(addDaysISO(fecha, -1))}
+                  sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+                  aria-label="Día anterior"
+                >
+                  <ChevronLeftRoundedIcon />
+                </IconButton>
 
-    <TextField
-      type="date"
-      size="small"
-      value={fecha}
-      onChange={(e) => setFechaAndUrl(e.target.value)}
-      sx={{
-        minWidth: 170,
-        "& .MuiOutlinedInput-root": {
-          bgcolor: "background.paper",
-          borderRadius: 2,
-          "&:hover": { bgcolor: alpha("#fff", 0.05) },
-        },
-      }}
-    />
+                <TextField
+                  type="date"
+                  size="small"
+                  value={fecha}
+                  onChange={(e) => setFechaAndUrl(e.target.value)}
+                  sx={{
+                    minWidth: 170,
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "background.paper",
+                      borderRadius: 2,
+                      "&:hover": { bgcolor: alpha("#fff", 0.05) },
+                    },
+                  }}
+                />
 
-    <IconButton
-      onClick={() => setFechaAndUrl(addDaysISO(fecha, 1))}
-      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
-      aria-label="Día siguiente"
-    >
-      <ChevronRightRoundedIcon />
-    </IconButton>
-  </Stack>
+                <IconButton
+                  onClick={() => setFechaAndUrl(addDaysISO(fecha, 1))}
+                  sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+                  aria-label="Día siguiente"
+                >
+                  <ChevronRightRoundedIcon />
+                </IconButton>
+              </Stack>
 
-  <Button
-    variant="contained"
-    startIcon={<RefreshOutlinedIcon />}
-    onClick={cargar}
-    disabled={loading}
-    sx={{
-      borderRadius: 2,
-      px: 3,
-      background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-      textTransform: "none",
-      fontWeight: 700,
-      boxShadow: "0 4px 14px rgba(59, 130, 246, 0.3)",
-      "&:hover": {
-        background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
-        boxShadow: "0 6px 20px rgba(59, 130, 246, 0.4)",
-      },
-      "&:disabled": { background: alpha("#3b82f6", 0.3) },
-    }}
-  >
-    {loading ? "Cargando..." : "Actualizar"}
-  </Button>
-</Stack>
-
+              <Button
+                variant="contained"
+                startIcon={<RefreshOutlinedIcon />}
+                onClick={cargar}
+                disabled={loading}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+                  textTransform: "none",
+                  fontWeight: 700,
+                  boxShadow: "0 4px 14px rgba(59, 130, 246, 0.3)",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                    boxShadow: "0 6px 20px rgba(59, 130, 246, 0.4)",
+                  },
+                  "&:disabled": { background: alpha("#3b82f6", 0.3) },
+                }}
+              >
+                {loading ? "Cargando..." : "Actualizar"}
+              </Button>
+            </Stack>
           </Stack>
 
           {/* Filters */}
@@ -507,7 +515,6 @@ export default function Productividad() {
                     size="medium"
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
-
                     placeholder="Buscar usuario por nombre..."
                     InputProps={{
                       startAdornment: <SearchOutlinedIcon sx={{ mr: 1.5, color: "text.secondary" }} />
@@ -527,16 +534,16 @@ export default function Productividad() {
             </Card>
           )}
 
-          {/* User Cards Grid */}
+          {/* User Cards Grid - MUI v6 Grid2 sintaxis correcta */}
           <Grid container spacing={3}>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <Grid item xs={12} sm={6} lg={4} key={`loading-${i}`}>
+                <Grid key={`loading-${i}`} size={{ xs: 12, sm: 6, md: 4 }}>
                   <LoadingCard />
                 </Grid>
               ))
             ) : data && usuarios.length === 0 ? (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Paper
                   sx={{
                     borderRadius: 3,
@@ -567,7 +574,7 @@ export default function Productividad() {
                 };
 
                 return (
-                  <Grid item xs={12} sm={6} lg={4} key={u.user_id}>
+                  <Grid key={u.user_id} size={{ xs: 12, sm: 6, md: 4 }}>
                     <Card
                       sx={{
                         borderRadius: 3,
@@ -648,9 +655,9 @@ export default function Productividad() {
 
                             <Divider sx={{ borderColor: alpha("#fff", 0.08) }} />
 
-                            {/* Stats Grid */}
+                            {/* Stats Grid - MUI v6 */}
                             <Grid container spacing={1.5}>
-                              <Grid item xs={4}>
+                              <Grid size={{ xs: 12, sm: 4 }}>
                                 <StatCard
                                   icon={ChecklistOutlinedIcon}
                                   value={Number(u?.actividades ?? 0) || 0}
@@ -658,7 +665,7 @@ export default function Productividad() {
                                   color="primary"
                                 />
                               </Grid>
-                              <Grid item xs={4}>
+                              <Grid size={{ xs: 12, sm: 4 }}>
                                 <StatCard
                                   icon={AssignmentTurnedInOutlinedIcon}
                                   value={Number(u?.revisiones ?? 0) || 0}
@@ -666,7 +673,7 @@ export default function Productividad() {
                                   color="success"
                                 />
                               </Grid>
-                              <Grid item xs={4}>
+                              <Grid size={{ xs: 12, sm: 4 }}>
                                 <StatCard
                                   icon={AccessTimeOutlinedIcon}
                                   value={formatearTiempo(u?.tiempo_total)}

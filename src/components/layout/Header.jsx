@@ -6,7 +6,7 @@ import {
   Box,
   IconButton,
   alpha,
-  Container,
+  // Container,
 } from "@mui/material";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
@@ -57,7 +57,7 @@ function Header() {
         </Box>
 
         {/* Theme Toggle Button */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        {/* <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <IconButton
             onClick={toggleTheme}
             sx={{
@@ -83,7 +83,7 @@ function Header() {
               <LightModeOutlinedIcon sx={{ fontSize: 22, color: "#fbbf24" }} />
             )}
           </IconButton>
-        </Box>
+        </Box> */}
       </Toolbar>
     </AppBar>
   );
