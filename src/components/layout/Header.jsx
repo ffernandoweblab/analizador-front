@@ -1,19 +1,19 @@
 import React from "react";
-import { useTheme } from "../../context/ThemeContext";
+// import { useTheme } from "../../context/ThemeContext";
 import {
   AppBar,
   Toolbar,
   Box,
-  IconButton,
-  alpha,
+  // IconButton,
+  // alpha,
   // Container,
 } from "@mui/material";
-import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+// import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
+// import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import logo from "../../assets/weblab logo.webp";
 
 function Header() {
-  const { theme, toggleTheme } = useTheme();
+  // const { theme, toggleTheme } = useTheme();
 
   return (
     <AppBar
@@ -51,7 +51,7 @@ function Header() {
               height: { xs: 40, sm: 48 },
               width: "auto",
               objectFit: "contain",
-              filter: theme === "dark" ? "brightness(1.1)" : "none",
+              filter: "none",
             }}
           />
         </Box>
