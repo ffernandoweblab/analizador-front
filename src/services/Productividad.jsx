@@ -1,9 +1,11 @@
+'use client';
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import IconButton from "@mui/material/IconButton";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 
 import {
   Avatar,
@@ -173,16 +175,17 @@ function LoadingCard() {
           </Stack>
           <Divider />
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <Skeleton height={80} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <Skeleton height={80} />
             </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid item xs={12} sm={4}>
               <Skeleton height={80} />
             </Grid>
           </Grid>
+
           <Skeleton height={120} />
         </Stack>
       </CardContent>
@@ -235,7 +238,7 @@ export default function Productividad() {
   const [, setSearchParams] = useSearchParams();
 
   const location = useLocation();
-  
+
   // ✅ CORRECCIÓN: Usar zona horaria America/Mexico_City en lugar de UTC
   const today = useMemo(() => {
     const now = new Date();
@@ -538,12 +541,12 @@ export default function Productividad() {
           <Grid container spacing={3}>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <Grid key={`loading-${i}`} size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid item key={`loading-${i}`} xs={12} sm={6} md={4}>
                   <LoadingCard />
                 </Grid>
               ))
             ) : data && usuarios.length === 0 ? (
-              <Grid size={{ xs: 12 }}>
+              <Grid item xs={12}>
                 <Paper
                   sx={{
                     borderRadius: 3,
@@ -574,7 +577,7 @@ export default function Productividad() {
                 };
 
                 return (
-                  <Grid key={u.user_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid item key={u.user_id} xs={12} sm={6} md={4}>
                     <Card
                       sx={{
                         borderRadius: 3,
