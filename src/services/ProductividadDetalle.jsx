@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 
-
 import {
   Accordion,
   AccordionDetails,
@@ -16,7 +15,6 @@ import {
   Container,
   Divider,
   Grid,
-  // LinearProgress,
   Paper,
   Skeleton,
   Stack,
@@ -56,7 +54,6 @@ const LABEL_COLORS = {
   },
 };
 
-
 function formatearTiempo(minutos) {
   const m = Number(minutos ?? 0) || 0;
   if (m <= 0) return "0 min";
@@ -78,21 +75,25 @@ function toProb(v) {
 
 function ProbRow({ label, value, color }) {
   const pct = Math.round(value * 1000) / 10;
-  
+
   const colorMap = {
     error: "#ef4444",
     warning: "#f59e0b",
-    success: "#10b981"
+    success: "#10b981",
   };
-  
+
   return (
-    
-    <Stack direction="row" spacing={2} alignItems="center">
-      <Box sx={{ minWidth: 110 }}>
+    <Stack
+      direction={{ xs: "column", sm: "row" }}
+      spacing={{ xs: 1, sm: 2 }}
+      alignItems={{ xs: "stretch", sm: "center" }}
+    >
+      <Box sx={{ minWidth: { xs: "auto", sm: 110 } }}>
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 600 }}>
           {label}
         </Typography>
       </Box>
+
       <Box sx={{ flex: 1, position: "relative" }}>
         <Box
           sx={{
@@ -106,15 +107,24 @@ function ProbRow({ label, value, color }) {
             sx={{
               height: "100%",
               width: `${Math.min(100, Math.max(0, value * 100))}%`,
-              background: `linear-gradient(90deg, ${colorMap[color]} 0%, ${alpha(colorMap[color], 0.8)} 100%)`,
+              background: `linear-gradient(90deg, ${colorMap[color]} 0%, ${alpha(
+                colorMap[color],
+                0.8
+              )} 100%)`,
               borderRadius: 999,
               transition: "width 0.6s ease-in-out",
             }}
           />
         </Box>
       </Box>
-      <Box sx={{ minWidth: 56, textAlign: "right" }}>
-        <Typography variant="body2" sx={{ color: colorMap[color], fontWeight: 700 }}>
+
+      <Box
+        sx={{
+          minWidth: { xs: "auto", sm: 56 },
+          textAlign: { xs: "left", sm: "right" },
+        }}
+      >
+        <Typography variant="body2" sx={{ color: colorMap[color], fontWeight: 800 }}>
           {pct.toFixed(1)}%
         </Typography>
       </Box>
@@ -124,25 +134,50 @@ function ProbRow({ label, value, color }) {
 
 function InfoRow({ icon: Icon, label, value, iconColor = "#3b82f6" }) {
   return (
-    <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1 }}>
+    <Stack
+      direction="row"
+      spacing={{ xs: 1.5, sm: 2 }}
+      alignItems="center"
+      sx={{ py: { xs: 0.75, sm: 1 } }}
+    >
       <Box
         sx={{
-          width: 40,
-          height: 40,
+          width: { xs: 36, sm: 40 },
+          height: { xs: 36, sm: 40 },
           borderRadius: 2,
           bgcolor: alpha(iconColor, 0.1),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         }}
       >
-        <Icon sx={{ fontSize: 20, color: iconColor }} />
+        <Icon sx={{ fontSize: { xs: 18, sm: 20 }, color: iconColor }} />
       </Box>
+
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 0.25 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            mb: 0.25,
+            fontSize: { xs: "0.7rem", sm: "0.75rem" },
+          }}
+        >
           {label}
         </Typography>
-        <Typography variant="body2" fontWeight={700} noWrap>
+
+        <Typography
+          variant="body2"
+          fontWeight={700}
+          sx={{
+            whiteSpace: { xs: "normal", sm: "nowrap" },
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            wordBreak: "break-word",
+          }}
+        >
           {value || "N/A"}
         </Typography>
       </Box>
@@ -154,7 +189,7 @@ function StatBox({ icon: Icon, label, value, color = "#3b82f6" }) {
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: 2,
         bgcolor: alpha(color, 0.08),
         border: "1px solid",
@@ -164,14 +199,31 @@ function StatBox({ icon: Icon, label, value, color = "#3b82f6" }) {
         "&:hover": {
           bgcolor: alpha(color, 0.12),
           transform: "translateY(-2px)",
-        }
+        },
       }}
     >
-      <Icon sx={{ fontSize: 32, color: color, mb: 1.5 }} />
-      <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5 }}>
+      <Icon sx={{ fontSize: { xs: 26, sm: 32 }, color: color, mb: { xs: 1, sm: 1.5 } }} />
+      <Typography
+        variant="h5"
+        fontWeight={900}
+        sx={{
+          color: "text.primary",
+          mb: 0.5,
+          fontSize: { xs: "1.1rem", sm: "1.35rem" },
+        }}
+      >
         {value}
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          fontWeight: 700,
+          fontSize: { xs: "0.65rem", sm: "0.75rem" },
+        }}
+      >
         {label}
       </Typography>
     </Box>
@@ -180,14 +232,14 @@ function StatBox({ icon: Icon, label, value, color = "#3b82f6" }) {
 
 function Bucket({ title, items, color = "#3b82f6" }) {
   if (!items?.length) return null;
-  
+
   return (
-    <Box sx={{ mt: 3 }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+    <Box sx={{ mt: { xs: 2.5, sm: 3 } }}>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
             width: 4,
-            height: 24,
+            height: { xs: 20, sm: 24 },
             borderRadius: 999,
             background: `linear-gradient(180deg, ${color} 0%, ${alpha(color, 0.6)} 100%)`,
           }}
@@ -220,14 +272,28 @@ function Bucket({ title, items, color = "#3b82f6" }) {
               "&:hover": {
                 borderColor: alpha(color, 0.3),
                 bgcolor: alpha(color, 0.03),
-              }
+              },
             }}
           >
-            <CardContent sx={{ py: 2, px: 2.5, "&:last-child": { pb: 2 } }}>
-              <Grid container spacing={2}>
+            <CardContent
+              sx={{
+                py: { xs: 1.5, sm: 2 },
+                px: { xs: 2, sm: 2.5 },
+                "&:last-child": { pb: { xs: 1.5, sm: 2 } },
+              }}
+            >
+              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                 <Grid item xs={12} sm={6} md={3}>
                   <Stack spacing={0.5}>
-                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Duración
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -241,7 +307,15 @@ function Bucket({ title, items, color = "#3b82f6" }) {
 
                 <Grid item xs={12} sm={6} md={3}>
                   <Stack spacing={0.5}>
-                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Fecha creación
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -255,10 +329,25 @@ function Bucket({ title, items, color = "#3b82f6" }) {
 
                 <Grid item xs={12} sm={6} md={3}>
                   <Stack spacing={0.5}>
-                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Nombre
                     </Typography>
-                    <Typography variant="body2" fontWeight={700} noWrap>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      sx={{
+                        whiteSpace: { xs: "normal", md: "nowrap" },
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {r?.nombre || "(Sin nombre)"}
                     </Typography>
                   </Stack>
@@ -266,10 +355,25 @@ function Bucket({ title, items, color = "#3b82f6" }) {
 
                 <Grid item xs={12} sm={6} md={3}>
                   <Stack spacing={0.5}>
-                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Assignees
                     </Typography>
-                    <Typography variant="body2" fontWeight={700} noWrap>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      sx={{
+                        whiteSpace: { xs: "normal", md: "nowrap" },
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {(r?.assignees || [])
                         .map((a) => a?.email || a?.name || a?.id)
                         .filter(Boolean)
@@ -333,14 +437,27 @@ export default function ProductividadDetalle() {
 
   const from = location.state?.from;
 
-const backUrl = from
-  ? from
-  : (dateParam ? `/productividad?date=${encodeURIComponent(dateParam)}` : "/productividad");
+  const backUrl = from
+    ? from
+    : dateParam
+    ? `/productividad?date=${encodeURIComponent(dateParam)}`
+    : "/productividad";
 
   return (
-    <Box sx={{ bgcolor: "#0a0e1a", minHeight: "100vh", py: 4 }}>
-      <Container maxWidth="xl">
-        <Stack spacing={4}>
+    <Box
+      sx={{
+        bgcolor: "#0a0e1a",
+        minHeight: "100vh",
+        py: { xs: 2, sm: 3, md: 4 },
+      }}
+    >
+      <Container
+        maxWidth="xl"
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        <Stack spacing={{ xs: 2.5, sm: 3.5, md: 4 }}>
           {/* Header */}
           <Box>
             <Button
@@ -348,23 +465,32 @@ const backUrl = from
               onClick={() => navigate(backUrl)}
               sx={{
                 borderRadius: 2,
-                mb: 2,
+                mb: { xs: 1.5, sm: 2 },
+                px: { xs: 1.5, sm: 2 },
                 color: "#3b82f6",
-                fontWeight: 600,
+                fontWeight: 700,
+                alignSelf: "flex-start",
                 "&:hover": {
                   bgcolor: alpha("#3b82f6", 0.1),
-                }
+                },
               }}
             >
               Volver
             </Button>
 
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-              <PersonOutlineOutlinedIcon sx={{ fontSize: 40, color: "#3b82f6" }} />
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={{ xs: 1.5, sm: 2 }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ mb: 1 }}
+            >
+              <PersonOutlineOutlinedIcon sx={{ fontSize: { xs: 34, sm: 40 }, color: "#3b82f6" }} />
               <Typography
                 variant="h3"
                 fontWeight={900}
                 sx={{
+                  fontSize: { xs: "1.6rem", sm: "2.2rem", md: "3rem" },
+                  lineHeight: 1.1,
                   background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
@@ -373,7 +499,15 @@ const backUrl = from
                 Detalle de usuario
               </Typography>
             </Stack>
-            <Typography variant="body1" sx={{ color: "text.secondary", ml: 7 }}>
+
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+                ml: { xs: 0, sm: 7 },
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+              }}
+            >
               Fecha: {day}
             </Typography>
           </Box>
@@ -393,11 +527,18 @@ const backUrl = from
           ) : null}
 
           {loading && !data ? (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {[1, 2, 3].map((i) => (
                 <Grid item xs={12} md={4} key={i}>
-                  <Card sx={{ borderRadius: 3, bgcolor: "background.paper", border: "1px solid", borderColor: "divider" }}>
-                    <CardContent sx={{ p: 3 }}>
+                  <Card
+                    sx={{
+                      borderRadius: 3,
+                      bgcolor: "background.paper",
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                       <Skeleton width="60%" height={32} sx={{ mb: 2 }} />
                       <Skeleton width="100%" height={20} />
                       <Skeleton width="80%" height={20} />
@@ -410,7 +551,7 @@ const backUrl = from
           ) : data ? (
             <>
               {/* User Info & Summary Cards */}
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {/* User Card */}
                 <Grid item xs={12} md={4}>
                   <Card
@@ -429,23 +570,29 @@ const backUrl = from
                         right: 0,
                         height: 4,
                         background: labelStyle.gradient,
-                      }
+                      },
                     }}
                   >
-                    <CardContent sx={{ p: 3 }}>
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                      <Stack
+                        direction="row"
+                        spacing={2}
+                        alignItems="center"
+                        sx={{ mb: { xs: 2, sm: 3 } }}
+                      >
                         <Avatar
                           sx={{
-                            width: 56,
-                            height: 56,
+                            width: { xs: 50, sm: 56 },
+                            height: { xs: 50, sm: 56 },
                             background: labelStyle.gradient,
-                            fontSize: 24,
+                            fontSize: { xs: 20, sm: 24 },
                             fontWeight: 900,
                             boxShadow: `0 4px 12px ${alpha(labelStyle.color, 0.3)}`,
                           }}
                         >
                           {(data?.user?.colaborador || "U").charAt(0).toUpperCase()}
                         </Avatar>
+
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography variant="h6" fontWeight={800} noWrap sx={{ mb: 0.5 }}>
                             Usuario
@@ -465,25 +612,10 @@ const backUrl = from
 
                       <Divider sx={{ mb: 2, borderColor: alpha("#fff", 0.05) }} />
 
-                      <Stack spacing={1}>
-                        <InfoRow
-                          icon={BadgeOutlinedIcon}
-                          label="Nombre"
-                          value={data?.user?.colaborador}
-                          iconColor="#3b82f6"
-                        />
-                        <InfoRow
-                          icon={PersonOutlineOutlinedIcon}
-                          label="ID"
-                          value={data?.user?.user_id}
-                          iconColor="#8b5cf6"
-                        />
-                        <InfoRow
-                          icon={EmailOutlinedIcon}
-                          label="Email"
-                          value={data?.user?.email}
-                          iconColor="#10b981"
-                        />
+                      <Stack spacing={{ xs: 0.5, sm: 1 }}>
+                        <InfoRow icon={BadgeOutlinedIcon} label="Nombre" value={data?.user?.colaborador} iconColor="#3b82f6" />
+                        <InfoRow icon={PersonOutlineOutlinedIcon} label="ID" value={data?.user?.user_id} iconColor="#8b5cf6" />
+                        <InfoRow icon={EmailOutlinedIcon} label="Email" value={data?.user?.email} iconColor="#10b981" />
                       </Stack>
                     </CardContent>
                   </Card>
@@ -500,54 +632,29 @@ const backUrl = from
                       height: "100%",
                     }}
                   >
-                    <CardContent sx={{ p: 3, height: "100%" }}>
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 }, height: "100%" }}>
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: { xs: 2, sm: 3 } }}>
                         <AssessmentOutlinedIcon sx={{ fontSize: 28, color: "#3b82f6" }} />
                         <Typography variant="h6" fontWeight={800}>
                           Resumen de actividad
                         </Typography>
                       </Stack>
 
-                      <Grid container spacing={2}>
+                      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                         <Grid item xs={6} sm={4}>
-                          <StatBox
-                            icon={ChecklistOutlinedIcon}
-                            label="Actividades"
-                            value={data?.resumen?.actividades ?? 0}
-                            color="#3b82f6"
-                          />
+                          <StatBox icon={ChecklistOutlinedIcon} label="Actividades" value={data?.resumen?.actividades ?? 0} color="#3b82f6" />
                         </Grid>
                         <Grid item xs={6} sm={4}>
-                          <StatBox
-                            icon={AssignmentTurnedInOutlinedIcon}
-                            label="Revisiones"
-                            value={data?.resumen?.revisiones ?? 0}
-                            color="#8b5cf6"
-                          />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Revisiones" value={data?.resumen?.revisiones ?? 0} color="#8b5cf6" />
                         </Grid>
                         <Grid item xs={6} sm={4}>
-                          <StatBox
-                            icon={AccessTimeOutlinedIcon}
-                            label="Tiempo total"
-                            value={formatearTiempo(data?.resumen?.tiempo_total ?? 0)}
-                            color="#10b981"
-                          />
+                          <StatBox icon={AccessTimeOutlinedIcon} label="Tiempo total" value={formatearTiempo(data?.resumen?.tiempo_total ?? 0)} color="#10b981" />
                         </Grid>
                         <Grid item xs={6} sm={6}>
-                          <StatBox
-                            icon={AssignmentTurnedInOutlinedIcon}
-                            label="Con duración"
-                            value={data?.resumen?.revisiones_con_duracion ?? 0}
-                            color="#f59e0b"
-                          />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Con duración" value={data?.resumen?.revisiones_con_duracion ?? 0} color="#f59e0b" />
                         </Grid>
                         <Grid item xs={6} sm={6}>
-                          <StatBox
-                            icon={AssignmentTurnedInOutlinedIcon}
-                            label="Sin duración"
-                            value={data?.resumen?.revisiones_sin_duracion ?? 0}
-                            color="#ef4444"
-                          />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Sin duración" value={data?.resumen?.revisiones_sin_duracion ?? 0} color="#ef4444" />
                         </Grid>
                       </Grid>
                     </CardContent>
@@ -564,12 +671,21 @@ const backUrl = from
                       borderColor: "divider",
                     }}
                   >
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" fontWeight={800} sx={{ mb: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        sx={{
+                          mb: { xs: 2, sm: 3 },
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                          fontSize: { xs: "0.95rem", sm: "1.1rem" },
+                        }}
+                      >
                         Distribución de probabilidades
                       </Typography>
 
-                      <Stack spacing={2}>
+                      <Stack spacing={{ xs: 1.5, sm: 2 }}>
                         <ProbRow label="No productivo" value={probs.no_productivo} color="error" />
                         <ProbRow label="Regular" value={probs.regular} color="warning" />
                         <ProbRow label="Productivo" value={probs.productivo} color="success" />
@@ -581,15 +697,24 @@ const backUrl = from
 
               {/* Activities Section */}
               <Box>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                  <ChecklistOutlinedIcon sx={{ fontSize: 32, color: "#3b82f6" }} />
-                  <Typography variant="h5" fontWeight={900}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={{ xs: 1, sm: 2 }}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  sx={{ mb: { xs: 2, sm: 3 } }}
+                >
+                  <ChecklistOutlinedIcon sx={{ fontSize: { xs: 28, sm: 32 }, color: "#3b82f6" }} />
+                  <Typography
+                    variant="h5"
+                    fontWeight={900}
+                    sx={{ fontSize: { xs: "1.2rem", sm: "1.5rem" } }}
+                  >
                     Actividades y revisiones
                   </Typography>
                 </Stack>
 
                 {Array.isArray(data?.actividades) && data.actividades.length > 0 ? (
-                  <Stack spacing={2}>
+                  <Stack spacing={{ xs: 1.5, sm: 2 }}>
                     {data.actividades.map((act) => {
                       const t = String(act?.titulo || "Actividad");
                       const buckets = act?.revisiones || {};
@@ -612,31 +737,34 @@ const backUrl = from
                             transition: "all 0.3s ease",
                             "&:hover": {
                               borderColor: alpha("#3b82f6", 0.3),
-                            }
+                            },
                           }}
                         >
                           <AccordionSummary
-                            expandIcon={
-                              <ExpandMoreOutlinedIcon
-                                sx={{
-                                  color: "#3b82f6",
-                                  fontSize: 28,
-                                }}
-                              />
-                            }
+                            expandIcon={<ExpandMoreOutlinedIcon sx={{ color: "#3b82f6", fontSize: 28 }} />}
                             sx={{
-                              py: 2,
-                              px: 3,
-                              "&:hover": {
-                                bgcolor: alpha("#3b82f6", 0.03),
-                              }
+                              py: { xs: 1.5, sm: 2 },
+                              px: { xs: 2, sm: 3 },
+                              "&:hover": { bgcolor: alpha("#3b82f6", 0.03) },
                             }}
                           >
-                            <Stack spacing={1} sx={{ width: "100%", pr: 2 }}>
-                              <Stack direction="row" spacing={2} alignItems="center">
-                                <Typography variant="h6" fontWeight={800}>
+                            <Stack spacing={1} sx={{ width: "100%", pr: { xs: 1, sm: 2 } }}>
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={{ xs: 1, sm: 2 }}
+                                alignItems={{ xs: "flex-start", sm: "center" }}
+                              >
+                                <Typography
+                                  variant="h6"
+                                  fontWeight={800}
+                                  sx={{
+                                    fontSize: { xs: "1rem", sm: "1.1rem" },
+                                    wordBreak: "break-word",
+                                  }}
+                                >
                                   {t}
                                 </Typography>
+
                                 <Chip
                                   label={`${total} revisiones`}
                                   size="small"
@@ -648,13 +776,14 @@ const backUrl = from
                                   }}
                                 />
                               </Stack>
+
                               <Typography variant="caption" sx={{ color: "text.secondary" }}>
                                 ID: {act?.id || "N/A"} · Inicio: {act?.dueStart || "N/A"}
                               </Typography>
                             </Stack>
                           </AccordionSummary>
 
-                          <AccordionDetails sx={{ px: 3, pb: 3 }}>
+                          <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2.5, sm: 3 } }}>
                             <Bucket title="TERMINADAS" items={terminadas} color="#10b981" />
                             <Bucket title="CONFIRMADAS" items={confirmadas} color="#3b82f6" />
                             <Bucket title="PENDIENTES" items={pendientes} color="#f59e0b" />
@@ -667,14 +796,14 @@ const backUrl = from
                   <Paper
                     sx={{
                       borderRadius: 3,
-                      p: 6,
+                      p: { xs: 3, sm: 6 },
                       textAlign: "center",
                       bgcolor: "background.paper",
                       border: "1px solid",
                       borderColor: "divider",
                     }}
                   >
-                    <ChecklistOutlinedIcon sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+                    <ChecklistOutlinedIcon sx={{ fontSize: { xs: 46, sm: 64 }, color: "text.disabled", mb: 2 }} />
                     <Typography variant="body1" sx={{ color: "text.secondary" }}>
                       No hay actividades registradas en este día
                     </Typography>

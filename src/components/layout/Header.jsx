@@ -1,46 +1,36 @@
+// src/components/layout/Header.jsx
 import React from "react";
-// import { useTheme } from "../../context/ThemeContext";
-import {
-  AppBar,
-  Toolbar,
-  Box,
-  // IconButton,
-  // alpha,
-  // Container,
-} from "@mui/material";
-// import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
-// import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import { AppBar, Toolbar, Box } from "@mui/material";
+import { SIDEBAR_WIDTH } from "./Sidebar";
 import logo from "../../assets/weblab logo.webp";
 
 function Header() {
-  // const { theme, toggleTheme } = useTheme();
-
   return (
     <AppBar
-  position="fixed"
-  elevation={0}
-  sx={{
-    bgcolor: "#0f1419",
-    borderBottom: "none",
-    boxShadow: "none",
-    zIndex: 1201,
-    left: 280,
-    width: "calc(100% - 280px)",
-  }}
->
-
+      position="fixed"
+      elevation={0}
+      sx={{
+        bgcolor: "#0f1419",
+        borderBottom: "none",
+        boxShadow: "none",
+        left: { xs: 0, md: `${SIDEBAR_WIDTH}px` },
+        width: { xs: "100%", md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
+        zIndex: (t) => t.zIndex.drawer + 1,
+      }}
+    >
       <Toolbar
         sx={{
           minHeight: { xs: 64, sm: 72 },
           px: { xs: 2, sm: 3, md: 4 },
         }}
       >
-        {/* Logo */}
+        {/* ✅ CLAVE: en mobile deja espacio para el botón hamburguesa flotante */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             flex: 1,
+            pl: { xs: 7, sm: 8, md: 0 }, // 7*8=56px, 8*8=64px
           }}
         >
           <Box
@@ -55,35 +45,6 @@ function Header() {
             }}
           />
         </Box>
-
-        {/* Theme Toggle Button */}
-        {/* <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton
-            onClick={toggleTheme}
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              bgcolor: alpha("#fff", 0.05),
-              border: "1px solid",
-              borderColor: alpha("#fff", 0.08),
-              transition: "all 0.3s ease",
-              "&:hover": {
-                bgcolor: alpha("#fff", 0.1),
-                borderColor: alpha("#f59e0b", 0.3),
-                transform: "scale(1.05)",
-              },
-            }}
-            title={`Cambiar a tema ${theme === "light" ? "oscuro" : "claro"}`}
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? (
-              <DarkModeOutlinedIcon sx={{ fontSize: 22, color: "#f59e0b" }} />
-            ) : (
-              <LightModeOutlinedIcon sx={{ fontSize: 22, color: "#fbbf24" }} />
-            )}
-          </IconButton>
-        </Box> */}
       </Toolbar>
     </AppBar>
   );

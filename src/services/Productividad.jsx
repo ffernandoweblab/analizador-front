@@ -1,11 +1,17 @@
+// src/pages/Productividad.jsx (o donde viva este componente)
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import IconButton from "@mui/material/IconButton";
+
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import Grid from "@mui/material/Grid";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 import {
   Avatar,
@@ -24,16 +30,12 @@ import {
   ToggleButtonGroup,
   Typography,
   Paper,
+  IconButton,
+  Grid,
   alpha,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-
-import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
-import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-
 
 // const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-xycc.onrender.com";
@@ -87,7 +89,7 @@ function getPredPalette(label) {
         bar: "success",
         avatarBg: "#10b981",
         gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        shadowColor: "rgba(16, 185, 129, 0.3)"
+        shadowColor: "rgba(16, 185, 129, 0.3)",
       };
     case "no_productivo":
       return {
@@ -95,7 +97,7 @@ function getPredPalette(label) {
         bar: "error",
         avatarBg: "#ef4444",
         gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-        shadowColor: "rgba(239, 68, 68, 0.3)"
+        shadowColor: "rgba(239, 68, 68, 0.3)",
       };
     default:
       return {
@@ -103,7 +105,7 @@ function getPredPalette(label) {
         bar: "warning",
         avatarBg: "#f59e0b",
         gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-        shadowColor: "rgba(245, 158, 11, 0.3)"
+        shadowColor: "rgba(245, 158, 11, 0.3)",
       };
   }
 }
@@ -114,16 +116,17 @@ function ProbRow({ label, value, color }) {
   const colorMap = {
     error: "#ef4444",
     warning: "#f59e0b",
-    success: "#10b981"
+    success: "#10b981",
   };
 
   return (
-    <Stack direction="row" spacing={2} alignItems="center">
-      <Box sx={{ minWidth: 110 }}>
-        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+    <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
+      <Box sx={{ minWidth: { xs: 86, sm: 110 } }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500, fontSize: { xs: 12, sm: 14 } }}>
           {label}
         </Typography>
       </Box>
+
       <Box sx={{ flex: 1, position: "relative" }}>
         <Box
           sx={{
@@ -144,8 +147,9 @@ function ProbRow({ label, value, color }) {
           />
         </Box>
       </Box>
-      <Box sx={{ minWidth: 56, textAlign: "right" }}>
-        <Typography variant="body2" sx={{ color: colorMap[color], fontWeight: 700 }}>
+
+      <Box sx={{ minWidth: { xs: 46, sm: 56 }, textAlign: "right" }}>
+        <Typography variant="body2" sx={{ color: colorMap[color], fontWeight: 700, fontSize: { xs: 12, sm: 14 } }}>
           {pct.toFixed(1)}%
         </Typography>
       </Box>
@@ -160,10 +164,10 @@ function LoadingCard() {
         borderRadius: 3,
         bgcolor: "background.paper",
         border: "1px solid",
-        borderColor: "divider"
+        borderColor: "divider",
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack spacing={2.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Skeleton variant="circular" width={48} height={48} />
@@ -173,7 +177,9 @@ function LoadingCard() {
             </Box>
             <Skeleton width={100} height={28} sx={{ borderRadius: 999 }} />
           </Stack>
+
           <Divider />
+
           <Grid container spacing={2}>
             <Grid item xs={12} sm={4}>
               <Skeleton height={80} />
@@ -204,7 +210,7 @@ function StatCard({ icon: Icon, value, label, color = "primary" }) {
   return (
     <Box
       sx={{
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderRadius: 2,
         bgcolor: alpha(colorMap[color], 0.08),
         border: "1px solid",
@@ -214,14 +220,26 @@ function StatCard({ icon: Icon, value, label, color = "primary" }) {
         "&:hover": {
           bgcolor: alpha(colorMap[color], 0.12),
           transform: "translateY(-2px)",
-        }
+        },
       }}
     >
-      <Icon sx={{ fontSize: 28, color: colorMap[color], mb: 1 }} />
-      <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5 }}>
+      <Icon sx={{ fontSize: { xs: 24, sm: 28 }, color: colorMap[color], mb: 1 }} />
+      <Typography
+        variant="h5"
+        fontWeight={900}
+        sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 18, sm: 22 } }}
+      >
         {value}
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          fontSize: { xs: 10, sm: 12 },
+        }}
+      >
         {label}
       </Typography>
     </Box>
@@ -229,6 +247,10 @@ function StatCard({ icon: Icon, value, label, color = "primary" }) {
 }
 
 export default function Productividad() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
@@ -236,10 +258,8 @@ export default function Productividad() {
   const [loading, setLoading] = useState(false);
 
   const [, setSearchParams] = useSearchParams();
-
   const location = useLocation();
 
-  // ✅ CORRECCIÓN: Usar zona horaria America/Mexico_City en lugar de UTC
   const today = useMemo(() => {
     const now = new Date();
     const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -256,20 +276,16 @@ export default function Productividad() {
     return sp.get("date") || today;
   });
 
-  // ✅ Cuando cambie la URL (back/forward o navigate), sincroniza fecha
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
     const d = sp.get("date") || today;
     setFecha(d);
   }, [location.search, today]);
 
-
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
 
-
   const addDaysISO = (iso, delta) => {
-    // iso: "YYYY-MM-DD"
     const d = new Date(`${iso}T00:00:00`);
     d.setDate(d.getDate() + delta);
     return d.toISOString().slice(0, 10);
@@ -277,10 +293,8 @@ export default function Productividad() {
 
   const setFechaAndUrl = (next) => {
     setFecha(next);
-
-    // Guarda la fecha en la URL
     if (!next || next === today) {
-      setSearchParams({}, { replace: true }); // si quieres historial por cada cambio, pon replace:false
+      setSearchParams({}, { replace: true });
     } else {
       setSearchParams({ date: next }, { replace: true });
     }
@@ -305,7 +319,6 @@ export default function Productividad() {
     }
   }, [fecha, today]);
 
-
   useEffect(() => {
     cargar();
     const id = setInterval(cargar, 5 * 60 * 1000);
@@ -319,7 +332,7 @@ export default function Productividad() {
     base.todos = data.users.length;
     for (const u of data.users) {
       if ((Number(u?.tiempo_total ?? 0) || 0) === 0) base.sin_actividad += 1;
-      else base[(u?.prediccion?.label || "regular")] += 1;
+      else base[u?.prediccion?.label || "regular"] += 1;
     }
     return base;
   }, [data]);
@@ -348,22 +361,18 @@ export default function Productividad() {
     (userId) => {
       const base = `/productividad/${encodeURIComponent(userId)}`;
       const url = fecha === today ? base : `${base}?date=${encodeURIComponent(fecha)}`;
-
-      // ✅ guardo EXACTAMENTE la url actual (incluye ?date=...)
       const from = location.pathname + location.search;
-
       navigate(url, { state: { from } });
     },
     [navigate, fecha, today, location.pathname, location.search]
   );
 
-
   if (err) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
         <Paper
           sx={{
-            p: 3,
+            p: { xs: 2, sm: 3 },
             borderRadius: 3,
             bgcolor: alpha("#ef4444", 0.1),
             border: "1px solid",
@@ -379,42 +388,83 @@ export default function Productividad() {
   }
 
   return (
-    <Box sx={{ bgcolor: "#0a0e1a", minHeight: "100vh", py: 4 }}>
-      <Container maxWidth="xl">
-        <Stack spacing={4}>
+    <Box
+      sx={{
+        bgcolor: "#0a0e1a",
+        width: "100%",
+        py: { xs: 2, sm: 3, md: 4 },
+      }}
+    >
+      <Container
+        maxWidth="xl"
+        disableGutters={isMobile}
+        sx={{
+          px: { xs: 2, sm: 3, md: 0 },
+          maxWidth: "100%",
+        }}
+      >
+        <Stack spacing={{ xs: 2.5, sm: 3.5, md: 4 }}>
           {/* Header */}
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={3}
-            alignItems={{ sm: "center" }}
+            direction={{ xs: "column", md: "row" }}
+            spacing={{ xs: 2, md: 3 }}
+            alignItems={{ md: "center" }}
             justifyContent="space-between"
           >
-            <Box>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                <TrendingUpIcon sx={{ fontSize: 40, color: "#3b82f6" }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1, minWidth: 0 }}>
+                <TrendingUpIcon sx={{ fontSize: { xs: 28, sm: 36, md: 40 }, color: "#3b82f6" }} />
                 <Typography
                   variant="h3"
                   fontWeight={900}
                   sx={{
+                    fontSize: { xs: 28, sm: 40, md: 52 },
+                    lineHeight: 1.1,
                     background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
+                    wordBreak: "break-word",
                   }}
                 >
                   Panel de Productividad
                 </Typography>
               </Stack>
-              <Typography variant="body1" sx={{ color: "text.secondary", ml: 7 }}>
+
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "text.secondary",
+                  ml: { xs: 0, sm: 7 },
+                  fontSize: { xs: 13, sm: 16 },
+                }}
+              >
                 {data ? `Predicción del día: ${data.date}` : "Cargando datos..."}
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={2} alignItems="center">
-              {/* Navegador de fecha (tipo Notion) */}
-              <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ sm: "center" }}
+              sx={{ width: { xs: "100%", md: "auto" } }}
+            >
+              {/* Navegador de fecha */}
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
                 <IconButton
                   onClick={() => setFechaAndUrl(addDaysISO(fecha, -1))}
-                  sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    flex: "0 0 auto",
+                  }}
                   aria-label="Día anterior"
                 >
                   <ChevronLeftRoundedIcon />
@@ -426,7 +476,8 @@ export default function Productividad() {
                   value={fecha}
                   onChange={(e) => setFechaAndUrl(e.target.value)}
                   sx={{
-                    minWidth: 170,
+                    flex: 1,
+                    minWidth: { xs: 0, sm: 170 },
                     "& .MuiOutlinedInput-root": {
                       bgcolor: "background.paper",
                       borderRadius: 2,
@@ -437,7 +488,12 @@ export default function Productividad() {
 
                 <IconButton
                   onClick={() => setFechaAndUrl(addDaysISO(fecha, 1))}
-                  sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    flex: "0 0 auto",
+                  }}
                   aria-label="Día siguiente"
                 >
                   <ChevronRightRoundedIcon />
@@ -445,13 +501,15 @@ export default function Productividad() {
               </Stack>
 
               <Button
+                fullWidth={isMobile}
                 variant="contained"
                 startIcon={<RefreshOutlinedIcon />}
                 onClick={cargar}
                 disabled={loading}
                 sx={{
                   borderRadius: 2,
-                  px: 3,
+                  px: { xs: 2.5, sm: 3 },
+                  py: { xs: 1.1, sm: 1.15 },
                   background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
                   textTransform: "none",
                   fontWeight: 700,
@@ -461,6 +519,7 @@ export default function Productividad() {
                     boxShadow: "0 6px 20px rgba(59, 130, 246, 0.4)",
                   },
                   "&:disabled": { background: alpha("#3b82f6", 0.3) },
+                  whiteSpace: "nowrap",
                 }}
               >
                 {loading ? "Cargando..." : "Actualizar"}
@@ -476,60 +535,69 @@ export default function Productividad() {
                 bgcolor: "background.paper",
                 border: "1px solid",
                 borderColor: "divider",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+                boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Stack spacing={3}>
-                  <ToggleButtonGroup
-                    value={filtroEstado}
-                    exclusive
-                    onChange={(_, v) => v && setFiltroEstado(v)}
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Stack spacing={{ xs: 2, sm: 3 }}>
+                  <Box
                     sx={{
-                      flexWrap: "wrap",
-                      gap: 1,
-                      "& .MuiToggleButton-root": {
-                        borderRadius: 2,
-                        border: "1px solid",
-                        borderColor: "divider",
-                        textTransform: "none",
-                        fontWeight: 600,
-                        px: 2.5,
-                        py: 1,
-                        "&.Mui-selected": {
-                          background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-                          color: "white",
-                          borderColor: "transparent",
-                          "&:hover": {
-                            background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
-                          }
-                        }
-                      }
+                      overflowX: { xs: "auto", sm: "visible" },
+                      WebkitOverflowScrolling: "touch",
+                      pb: { xs: 0.5, sm: 0 },
                     }}
                   >
-                    <ToggleButton value="todos">Todos ({counts.todos})</ToggleButton>
-                    <ToggleButton value="productivo">✓ Productivo ({counts.productivo})</ToggleButton>
-                    <ToggleButton value="regular">~ Regular ({counts.regular})</ToggleButton>
-                    <ToggleButton value="no_productivo">✗ No productivo ({counts.no_productivo})</ToggleButton>
-                    <ToggleButton value="sin_actividad">○ Sin actividad ({counts.sin_actividad})</ToggleButton>
-                  </ToggleButtonGroup>
+                    <ToggleButtonGroup
+                      value={filtroEstado}
+                      exclusive
+                      onChange={(_, v) => v && setFiltroEstado(v)}
+                      sx={{
+                        flexWrap: { xs: "nowrap", sm: "wrap" },
+                        gap: 1,
+                        width: { xs: "max-content", sm: "100%" },
+                        "& .MuiToggleButton-root": {
+                          borderRadius: 2,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          textTransform: "none",
+                          fontWeight: 600,
+                          px: { xs: 2, sm: 2.5 },
+                          py: 1,
+                          whiteSpace: "nowrap",
+                          "&.Mui-selected": {
+                            background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+                            color: "white",
+                            borderColor: "transparent",
+                            "&:hover": {
+                              background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <ToggleButton value="todos">Todos ({counts.todos})</ToggleButton>
+                      <ToggleButton value="productivo">✓ Productivo ({counts.productivo})</ToggleButton>
+                      <ToggleButton value="regular">~ Regular ({counts.regular})</ToggleButton>
+                      <ToggleButton value="no_productivo">✗ No productivo ({counts.no_productivo})</ToggleButton>
+                      <ToggleButton value="sin_actividad">○ Sin actividad ({counts.sin_actividad})</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
 
                   <TextField
-                    size="medium"
+                    size={isMobile ? "small" : "medium"}
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
                     placeholder="Buscar usuario por nombre..."
                     InputProps={{
-                      startAdornment: <SearchOutlinedIcon sx={{ mr: 1.5, color: "text.secondary" }} />
+                      startAdornment: <SearchOutlinedIcon sx={{ mr: 1.5, color: "text.secondary" }} />,
                     }}
                     sx={{
+                      width: "100%",
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 2,
                         bgcolor: alpha("#fff", 0.03),
-                        "&:hover": {
-                          bgcolor: alpha("#fff", 0.05),
-                        }
-                      }
+                        "&:hover": { bgcolor: alpha("#fff", 0.05) },
+                      },
                     }}
                   />
                 </Stack>
@@ -537,8 +605,8 @@ export default function Productividad() {
             </Card>
           )}
 
-          {/* User Cards Grid - MUI v6 Grid2 sintaxis correcta */}
-          <Grid container spacing={3}>
+          {/* User Cards Grid */}
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <Grid item key={`loading-${i}`} xs={12} sm={6} md={4}>
@@ -550,15 +618,15 @@ export default function Productividad() {
                 <Paper
                   sx={{
                     borderRadius: 3,
-                    p: 6,
+                    p: { xs: 3, sm: 6 },
                     textAlign: "center",
                     bgcolor: "background.paper",
                     border: "1px solid",
                     borderColor: "divider",
                   }}
                 >
-                  <SearchOutlinedIcon sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
-                  <Typography variant="h6" sx={{ color: "text.secondary" }}>
+                  <SearchOutlinedIcon sx={{ fontSize: { xs: 44, sm: 64 }, color: "text.disabled", mb: 2 }} />
+                  <Typography variant="h6" sx={{ color: "text.secondary", fontSize: { xs: 14, sm: 18 } }}>
                     No se encontraron usuarios con los filtros seleccionados
                   </Typography>
                 </Paper>
@@ -588,7 +656,7 @@ export default function Productividad() {
                         position: "relative",
                         overflow: "hidden",
                         "&:hover": {
-                          transform: "translateY(-4px)",
+                          transform: isTablet ? "none" : "translateY(-4px)",
                           boxShadow: `0 12px 32px ${palette.shadowColor}`,
                           borderColor: palette.avatarBg,
                         },
@@ -600,33 +668,34 @@ export default function Productividad() {
                           right: 0,
                           height: 4,
                           background: palette.gradient,
-                        }
+                        },
                       }}
                     >
                       <CardActionArea onClick={() => onGoDetalle(u.user_id)}>
-                        <CardContent sx={{ p: 3 }}>
-                          <Stack spacing={2.5}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                          <Stack spacing={{ xs: 2, sm: 2.5 }}>
                             {/* User Header */}
                             <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between">
                               <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
                                 <Avatar
                                   sx={{
-                                    width: 48,
-                                    height: 48,
+                                    width: { xs: 44, sm: 48 },
+                                    height: { xs: 44, sm: 48 },
                                     background: palette.gradient,
                                     fontWeight: 900,
-                                    fontSize: 20,
+                                    fontSize: { xs: 18, sm: 20 },
                                     boxShadow: `0 4px 12px ${palette.shadowColor}`,
                                   }}
                                 >
                                   {(u?.colaborador || "U").charAt(0).toUpperCase()}
                                 </Avatar>
+
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
                                   <Typography
                                     variant="h6"
                                     fontWeight={800}
                                     noWrap
-                                    sx={{ color: "text.primary", mb: 0.5 }}
+                                    sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 16, sm: 18 } }}
                                   >
                                     {u?.colaborador || "Usuario"}
                                   </Typography>
@@ -635,7 +704,8 @@ export default function Productividad() {
                                     sx={{
                                       color: "text.secondary",
                                       display: "block",
-                                      lineHeight: 1.4
+                                      lineHeight: 1.4,
+                                      fontSize: { xs: 11, sm: 12 },
                                     }}
                                   >
                                     {DESCRIPTIONS[label] || ""}
@@ -645,6 +715,7 @@ export default function Productividad() {
 
                               <Chip
                                 label={prettyLabel(label)}
+                                size={isMobile ? "small" : "medium"}
                                 sx={{
                                   fontWeight: 800,
                                   borderRadius: 999,
@@ -652,15 +723,16 @@ export default function Productividad() {
                                   color: "white",
                                   border: "none",
                                   boxShadow: `0 2px 8px ${palette.shadowColor}`,
+                                  ml: 1,
                                 }}
                               />
                             </Stack>
 
                             <Divider sx={{ borderColor: alpha("#fff", 0.08) }} />
 
-                            {/* Stats Grid - MUI v6 */}
+                            {/* Stats */}
                             <Grid container spacing={1.5}>
-                              <Grid size={{ xs: 12, sm: 4 }}>
+                              <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={ChecklistOutlinedIcon}
                                   value={Number(u?.actividades ?? 0) || 0}
@@ -668,7 +740,7 @@ export default function Productividad() {
                                   color="primary"
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 4 }}>
+                              <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={AssignmentTurnedInOutlinedIcon}
                                   value={Number(u?.revisiones ?? 0) || 0}
@@ -676,7 +748,7 @@ export default function Productividad() {
                                   color="success"
                                 />
                               </Grid>
-                              <Grid size={{ xs: 12, sm: 4 }}>
+                              <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={AccessTimeOutlinedIcon}
                                   value={formatearTiempo(u?.tiempo_total)}
@@ -689,7 +761,7 @@ export default function Productividad() {
                             {/* Probability Distribution */}
                             <Box
                               sx={{
-                                p: 2.5,
+                                p: { xs: 2, sm: 2.5 },
                                 borderRadius: 2,
                                 bgcolor: alpha("#fff", 0.02),
                                 border: "1px solid",
@@ -699,7 +771,13 @@ export default function Productividad() {
                               <Typography
                                 variant="subtitle2"
                                 fontWeight={800}
-                                sx={{ mb: 2, color: "text.primary", textTransform: "uppercase", letterSpacing: 0.5 }}
+                                sx={{
+                                  mb: 2,
+                                  color: "text.primary",
+                                  textTransform: "uppercase",
+                                  letterSpacing: 0.5,
+                                  fontSize: { xs: 12, sm: 13 },
+                                }}
                               >
                                 Distribución de probabilidades
                               </Typography>
