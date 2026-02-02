@@ -344,12 +344,14 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                       variant="body2"
                       fontWeight={700}
                       sx={{
-                        whiteSpace: { xs: "normal", md: "nowrap" },
+                        whiteSpace: "normal",
+                        overflowWrap: "anywhere",
                         wordBreak: "break-word",
                       }}
                     >
                       {r?.nombre || "(Sin nombre)"}
                     </Typography>
+
                   </Stack>
                 </Grid>
 
@@ -370,7 +372,8 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                       variant="body2"
                       fontWeight={700}
                       sx={{
-                        whiteSpace: { xs: "normal", md: "nowrap" },
+                        whiteSpace: "normal",          // ✅ permite saltos de línea en desktop
+                        overflowWrap: "anywhere",      // ✅ evita que emails largos rompan layout
                         wordBreak: "break-word",
                       }}
                     >
@@ -379,6 +382,7 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                         .filter(Boolean)
                         .join(", ") || "N/A"}
                     </Typography>
+
                   </Stack>
                 </Grid>
               </Grid>
@@ -440,8 +444,8 @@ export default function ProductividadDetalle() {
   const backUrl = from
     ? from
     : dateParam
-    ? `/productividad?date=${encodeURIComponent(dateParam)}`
-    : "/productividad";
+      ? `/productividad?date=${encodeURIComponent(dateParam)}`
+      : "/productividad";
 
   return (
     <Box
