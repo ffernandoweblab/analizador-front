@@ -34,7 +34,7 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 
 //const BACKEND_URL_DETAIL = "http://localhost:3001";
-const BACKEND_URL_DETAIL = "https://backend-xycc.onrender.com";
+const BACKEND_URL_DETAIL = "https://backend-1-azu0.onrender.com";
 
 const LABEL_COLORS = {
   productivo: {

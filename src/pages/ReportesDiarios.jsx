@@ -64,7 +64,7 @@ const COLORS = {
 };
 
 // const BACKEND_URL = "http://localhost:3001";
-const BACKEND_URL = "https://backend-xycc.onrender.com";
+const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
 function formatearTiempo(minutos) {
   if (!minutos || minutos === 0) return "0 min";
