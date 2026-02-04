@@ -73,6 +73,306 @@ function toProb(v) {
   return n;
 }
 
+// Función para obtener los últimos N días laborales (excluyendo sábados y domingos)
+function obtenerDiasLaborales(diasRequeridos = 7) {
+  const dias = [];
+  const hoy = new Date();
+  let fechaActual = new Date(hoy);
+
+  while (dias.length < diasRequeridos) {
+    const diaSemana = fechaActual.getDay(); // 0 = Domingo, 6 = Sábado
+
+    // Solo agregar si NO es sábado (6) ni domingo (0)
+    if (diaSemana !== 0 && diaSemana !== 6) {
+      dias.push(fechaActual.toISOString().slice(0, 10));
+    }
+
+    // Retroceder un día
+    fechaActual.setDate(fechaActual.getDate() - 1);
+  }
+
+  return dias.reverse(); // Ordenar de más antiguo a más reciente
+}
+
+// Componente del Semáforo Visual
+function SemaforoVisual({ userId }) {
+  const [historial, setHistorial] = useState([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(true);
+
+  useEffect(() => {
+    const cargarHistorial = async () => {
+      setLoadingHistorial(true);
+      const diasLaborales = obtenerDiasLaborales(7); // Últimos 7 días laborales
+      const promesas = diasLaborales.map(async (fecha) => {
+        try {
+          const url = `${BACKEND_URL_DETAIL}/api/productividad/usuario/${encodeURIComponent(userId)}?date=${encodeURIComponent(fecha)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('Error al cargar');
+          const data = await res.json();
+
+          return {
+            fecha,
+            label: data?.prediccion?.label || 'regular',
+            tiempoTotal: data?.resumen?.tiempo_total || 0,
+          };
+        } catch (error) {
+          console.error(`Error cargando ${fecha}:`, error);
+          return {
+            fecha,
+            label: 'sin_datos',
+            tiempoTotal: 0,
+          };
+        }
+      });
+
+      const resultados = await Promise.all(promesas);
+      setHistorial(resultados);
+      setLoadingHistorial(false);
+    };
+
+    cargarHistorial();
+  }, [userId]);
+
+  const obtenerColorSemaforo = (label) => {
+    switch (label) {
+      case 'productivo':
+        return {
+          color: '#10b981',
+          bg: alpha('#10b981', 0.15),
+          border: '#10b981',
+          emoji: '✓',
+        };
+      case 'no_productivo':
+        return {
+          color: '#ef4444',
+          bg: alpha('#ef4444', 0.15),
+          border: '#ef4444',
+          emoji: '✗',
+        };
+      case 'regular':
+        return {
+          color: '#f59e0b',
+          bg: alpha('#f59e0b', 0.15),
+          border: '#f59e0b',
+          emoji: '~',
+        };
+      default:
+        return {
+          color: '#6b7280',
+          bg: alpha('#6b7280', 0.15),
+          border: '#6b7280',
+          emoji: '○',
+        };
+    }
+  };
+
+  const obtenerNombreDia = (fecha) => {
+    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    return dias[fechaObj.getDay()];
+  };
+
+  const obtenerDiaMes = (fecha) => {
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    return fechaObj.getDate();
+  };
+
+  if (loadingHistorial) {
+    return (
+      <Card
+        sx={{
+          borderRadius: 3,
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <CalendarTodayOutlinedIcon sx={{ fontSize: 28, color: '#3b82f6' }} />
+            <Typography variant="h6" fontWeight={800}>
+              Historial de productividad (últimos 7 días laborales)
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1.5} justifyContent="space-between">
+            {Array.from({ length: 7 }).map((_, idx) => (
+              <Skeleton
+                key={idx}
+                variant="rounded"
+                width="100%"
+                height={80}
+                sx={{ borderRadius: 2 }}
+              />
+            ))}
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      sx={{
+        borderRadius: 3,
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <CalendarTodayOutlinedIcon sx={{ fontSize: 28, color: '#3b82f6' }} />
+          <Typography variant="h6" fontWeight={800}>
+            Historial de productividad (últimos 7 días laborales)
+          </Typography>
+        </Stack>
+
+        <Grid container spacing={1.5}>
+          {historial.map((dia) => {
+            const estilo = obtenerColorSemaforo(dia.label);
+            const esHoy = dia.fecha === new Date().toISOString().slice(0, 10);
+
+            return (
+              <Grid item xs key={dia.fecha} sx={{ flex: 1, minWidth: 0 }}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: estilo.bg,
+                    border: '2px solid',
+                    borderColor: esHoy ? estilo.border : 'transparent',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 16px ${alpha(estilo.color, 0.3)}`,
+                      borderColor: estilo.border,
+                    },
+                  }}
+                >
+                  {esHoy && (
+                    <Chip
+                      label="HOY"
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: -10,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        bgcolor: estilo.color,
+                        color: 'white',
+                        fontWeight: 800,
+                        fontSize: 9,
+                        height: 18,
+                      }}
+                    />
+                  )}
+
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      color: estilo.color,
+                      fontWeight: 900,
+                      mb: 1,
+                      fontSize: { xs: 28, sm: 36 },
+                    }}
+                  >
+                    {estilo.emoji}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      display: 'block',
+                      mb: 0.5,
+                      fontWeight: 600,
+                      fontSize: { xs: 10, sm: 11 },
+                    }}
+                  >
+                    {obtenerNombreDia(dia.fecha)}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: estilo.color,
+                      fontWeight: 800,
+                      fontSize: { xs: 14, sm: 16 },
+                    }}
+                  >
+                    {obtenerDiaMes(dia.fecha)}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      display: 'block',
+                      mt: 1,
+                      fontSize: 10,
+                    }}
+                  >
+                    {formatearTiempo(dia.tiempoTotal)}
+                  </Typography>
+                </Box>
+              </Grid>
+            );
+          })}
+        </Grid>
+
+        <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Stack direction="row" spacing={3} justifyContent="center" flexWrap="wrap">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: '#10b981',
+                }}
+              />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                Productivo
+              </Typography>
+            </Stack>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: '#f59e0b',
+                }}
+              />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                Regular
+              </Typography>
+            </Stack>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: '#ef4444',
+                }}
+              />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                No productivo
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProbRow({ label, value, color }) {
   const pct = Math.round(value * 1000) / 10;
 
@@ -351,7 +651,6 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                     >
                       {r?.nombre || "(Sin nombre)"}
                     </Typography>
-
                   </Stack>
                 </Grid>
 
@@ -372,8 +671,8 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                       variant="body2"
                       fontWeight={700}
                       sx={{
-                        whiteSpace: "normal",          // ✅ permite saltos de línea en desktop
-                        overflowWrap: "anywhere",      // ✅ evita que emails largos rompan layout
+                        whiteSpace: "normal",
+                        overflowWrap: "anywhere",
                         wordBreak: "break-word",
                       }}
                     >
@@ -382,7 +681,6 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                         .filter(Boolean)
                         .join(", ") || "N/A"}
                     </Typography>
-
                   </Stack>
                 </Grid>
               </Grid>
@@ -696,6 +994,11 @@ export default function ProductividadDetalle() {
                       </Stack>
                     </CardContent>
                   </Card>
+                </Grid>
+
+                {/* Semáforo Visual - Historial de últimos 7 días laborales */}
+                <Grid item xs={12}>
+                  <SemaforoVisual userId={userId} />
                 </Grid>
               </Grid>
 
