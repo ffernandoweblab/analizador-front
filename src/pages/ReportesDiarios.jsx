@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -63,7 +64,6 @@ const COLORS = {
   no_productivo: "#ef4444",
 };
 
-// const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
 function formatearTiempo(minutos) {
@@ -77,21 +77,191 @@ function formatearTiempo(minutos) {
   return `${minutos} min`;
 }
 
+// Función para obtener los últimos N días laborales
+function obtenerDiasLaborales(diasRequeridos = 7) {
+  const dias = [];
+  const hoy = new Date();
+  let fechaActual = new Date(hoy);
+
+  while (dias.length < diasRequeridos) {
+    const diaSemana = fechaActual.getDay();
+
+    // Solo agregar si NO es sábado (6) ni domingo (0)
+    if (diaSemana !== 0 && diaSemana !== 6) {
+      dias.push(fechaActual.toISOString().slice(0, 10));
+    }
+
+    fechaActual.setDate(fechaActual.getDate() - 1);
+  }
+
+  return dias.reverse();
+}
+
+// Modal para mostrar usuarios de un día seleccionado
+function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [usuariosDelDia, setUsuariosDelDia] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cargarUsuariosDelDia = async () => {
+      if (!diaSeleccionado) return;
+      
+      setLoading(true);
+      try {
+        const url = `${BACKEND_URL}/api/productividad/hoy?date=${diaSeleccionado.fechaCompleta}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error al cargar');
+        const data = await res.json();
+        
+        setUsuariosDelDia(data.users || []);
+      } catch (e) {
+        console.error('Error:', e);
+        setUsuariosDelDia([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarUsuariosDelDia();
+  }, [diaSeleccionado]);
+
+  if (!diaSeleccionado) return null;
+
+  return (
+    <Dialog
+      open={!!diaSeleccionado}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          bgcolor: 'background.paper',
+        }
+      }}
+    >
+      <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>📅 {diaSeleccionado.fecha}</span>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            <strong>Total:</strong> {diaSeleccionado.total} usuarios
+          </Typography>
+          
+          <Grid container spacing={1}>
+            <Grid item xs={6}>
+              <Box sx={{ p: 1.5, bgcolor: alpha('#10b981', 0.1), borderRadius: 2, textAlign: 'center' }}>
+                <Typography variant="body2" fontWeight={800} color="#10b981">
+                  {diaSeleccionado.productivo}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Productivos
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6}>
+              <Box sx={{ p: 1.5, bgcolor: alpha('#f59e0b', 0.1), borderRadius: 2, textAlign: 'center' }}>
+                <Typography variant="body2" fontWeight={800} color="#f59e0b">
+                  {diaSeleccionado.regular}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Regulares
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6}>
+              <Box sx={{ p: 1.5, bgcolor: alpha('#ef4444', 0.1), borderRadius: 2, textAlign: 'center' }}>
+                <Typography variant="body2" fontWeight={800} color="#ef4444">
+                  {diaSeleccionado.no_productivo}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  No Productivos
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          <Typography variant="subtitle2" fontWeight={800} sx={{ mt: 2 }}>
+            📋 Usuarios de ese día:
+          </Typography>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : usuariosDelDia.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+              Sin datos para este día
+            </Typography>
+          ) : (
+            <Stack spacing={1} sx={{ maxHeight: 400, overflowY: 'auto' }}>
+              {usuariosDelDia.map((user) => (
+                <Box
+                  key={user.user_id}
+                  onClick={() => onNavigateToDia(user.user_id, diaSeleccionado.fechaCompleta)}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: alpha('#64748b', 0.08),
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: alpha('#3b82f6', 0.12),
+                      borderColor: '#3b82f6',
+                      transform: 'translateX(4px)',
+                    }
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                    {user.colaborador}
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                    <Chip
+                      label={user.prediccion?.label || 'regular'}
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(COLORS[user.prediccion?.label || 'regular'], 0.2),
+                        color: COLORS[user.prediccion?.label || 'regular'],
+                        fontWeight: 700,
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
+                      ⏱️ {formatearTiempo(user.tiempo_total)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
+                      📋 {user.actividades} actividades
+                    </Typography>
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Modal expandible para gráficas
-// Modal expandible para gráficas (RESPONSIVO + más pequeño)
 function ModalGrafica({ titulo, tipo, datos, onClose }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
-  // Alto base del chart según tipo + breakpoint (solo UI)
   const chartHeight = (() => {
     if (tipo === "distribucion") {
-      // Pie: no necesita ser enorme
       return isMobile ? 320 : isTablet ? 420 : 520;
     }
 
-    // Barras: depende de cantidad (pero con límites)
     const perRow = tipo === "actividades_revisiones" ? (isMobile ? 34 : 44) : (isMobile ? 28 : 38);
     const minH = isMobile ? 360 : isTablet ? 520 : 620;
     const maxH = isMobile ? 520 : isTablet ? 760 : 900;
@@ -105,18 +275,16 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
       open={true}
       onClose={onClose}
       fullWidth
-      maxWidth="lg" // ✅ antes xl (muy grande)
+      maxWidth="lg"
       PaperProps={{
         sx: {
           bgcolor: "background.paper",
           borderRadius: { xs: 3, sm: 3 },
           width: "100%",
-          maxWidth: { xs: "95vw", sm: "92vw", md: "1100px" }, // ✅ controla el tamaño real
-          m: { xs: 1.5, sm: 2 }, // ✅ márgenes en pantallas pequeñas
-
-          // ✅ alto máximo + scroll interno (no se sale de pantalla)
+          maxWidth: { xs: "95vw", sm: "92vw", md: "1100px" },
+          m: { xs: 1.5, sm: 2 },
           maxHeight: { xs: "88vh", sm: "86vh" },
-          overflow: "hidden", // el scroll vive en DialogContent
+          overflow: "hidden",
         },
       }}
     >
@@ -133,7 +301,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
         }}
       >
         <Typography
-          variant={isMobile ? "subtitle1" : "h6"} // ✅ más compacto en mobile
+          variant={isMobile ? "subtitle1" : "h6"}
           fontWeight={900}
           sx={{
             pr: 1,
@@ -169,7 +337,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                 margin={{
                   top: 12,
                   right: isMobile ? 8 : 20,
-                  left: isMobile ? 110 : 200, // ✅ reduce un poco
+                  left: isMobile ? 110 : 200,
                   bottom: 12,
                 }}
               >
@@ -179,7 +347,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                   dataKey="nombre"
                   type="category"
                   tick={{ fontSize: isMobile ? 9 : 12, fill: theme.palette.text.primary }}
-                  width={isMobile ? 100 : 180} // ✅ reduce un poco
+                  width={isMobile ? 100 : 180}
                 />
                 <RechartsTooltip
                   formatter={(value) => formatearTiempo(value)}
@@ -250,7 +418,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                       : ({ name, count, percent }) =>
                           `${name}: ${count} usuarios (${(percent * 100).toFixed(1)}%)`
                   }
-                  outerRadius={isMobile ? 95 : isTablet ? 150 : 190} // ✅ más pequeño en general
+                  outerRadius={isMobile ? 95 : isTablet ? 150 : 190}
                   fill="#8884d8"
                   dataKey="count"
                 >
@@ -265,11 +433,13 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                     props.payload.name,
                   ]}
                   contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: "10px",
-                    color: theme.palette.text.primary,
+                    backgroundColor: "#1f2937",
+                    border: `2px solid ${theme.palette.primary.main}`,
+                    borderRadius: "8px",
+                    color: "#ffffff",
                     fontSize: isMobile ? "12px" : "14px",
+                    padding: "8px 12px",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
                   }}
                 />
 
@@ -282,11 +452,49 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
             </ResponsiveContainer>
           </Box>
         )}
+
+        {tipo === "siete_dias" && (
+          <Box sx={{ width: "100%", height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={datos}
+                margin={{
+                  top: 12,
+                  right: isMobile ? 8 : 20,
+                  left: isMobile ? 6 : 16,
+                  bottom: isMobile ? 100 : 120,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                <XAxis
+                  dataKey="fecha"
+                  tick={{ fontSize: isMobile ? 8 : 11, fill: theme.palette.text.primary }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={isMobile ? 100 : 120}
+                />
+                <YAxis tick={{ fontSize: isMobile ? 10 : 13, fill: theme.palette.text.primary }} />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: "10px",
+                    color: theme.palette.text.primary,
+                    fontSize: isMobile ? "12px" : "14px",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: isMobile ? "12px" : "14px" }} />
+                <Bar dataKey="productivo" stackId="a" fill={COLORS.productivo} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="regular" stackId="a" fill={COLORS.regular} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="no_productivo" stackId="a" fill={COLORS.no_productivo} radius={[0, 0, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
-
 
 // Componente de paginación para tabla
 function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
@@ -343,8 +551,6 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
 
 // Componente de estadística
 function StatCard({ icon: Icon, label, value, color }) {
-  // const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  
   return (
     <Card
       sx={{
@@ -405,9 +611,9 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 export default function ReportesDiarios() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  // const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -416,9 +622,11 @@ export default function ReportesDiarios() {
   const [isToday, setIsToday] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   
-  // Estados para modales y paginación
   const [modalActivo, setModalActivo] = useState(null);
   const [paginaUsuarios, setPaginaUsuarios] = useState(1);
+  const [datosOchoDias, setDatosOchoDias] = useState([]);
+  const [loadingOchoDias, setLoadingOchoDias] = useState(false);
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const usuariosPorPagina = 8;
 
   useEffect(() => {
@@ -462,24 +670,139 @@ export default function ReportesDiarios() {
     }
   }, [fecha]);
 
+  // Cargar datos de 7 días laborales
+  const cargarDatos7Dias = useCallback(async () => {
+    setLoadingOchoDias(true);
+    try {
+      const diasLaborales = obtenerDiasLaborales(7);
+      const today = new Date().toISOString().slice(0, 10);
+      
+      const promesas = diasLaborales.map(async (fecha) => {
+        try {
+          // Si es hoy, usar los datos ya cargados en 'data'
+          if (fecha === today && data?.users) {
+            const contadores = {
+              productivo: 0,
+              regular: 0,
+              no_productivo: 0,
+            };
+
+            // Usar la misma lógica para contar
+            data.users.forEach(user => {
+              let label = user.prediccion?.label || "regular";
+              
+              if (!user.prediccion?.label && user.prediccion?.probabilidades) {
+                const probs = user.prediccion.probabilidades;
+                const maxProb = Math.max(
+                  probs.productivo || 0,
+                  probs.regular || 0,
+                  probs.no_productivo || 0
+                );
+                
+                if (maxProb === (probs.productivo || 0)) label = "productivo";
+                else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
+                else label = "regular";
+              }
+              
+              contadores[label]++;
+            });
+
+            return {
+              fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
+              fechaCompleta: fecha,
+              productivo: contadores.productivo,
+              regular: contadores.regular,
+              no_productivo: contadores.no_productivo,
+              total: data.users.length,
+            };
+          }
+
+          // Para otros días, hacer la consulta
+          const url = `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('Error al cargar');
+          const dataDia = await res.json();
+
+          const contadores = {
+            productivo: 0,
+            regular: 0,
+            no_productivo: 0,
+          };
+
+          // Usar la misma lógica que las otras gráficas para contar
+          dataDia.users?.forEach(user => {
+            let label = user.prediccion?.label || "regular";
+            
+            if (!user.prediccion?.label && user.prediccion?.probabilidades) {
+              const probs = user.prediccion.probabilidades;
+              const maxProb = Math.max(
+                probs.productivo || 0,
+                probs.regular || 0,
+                probs.no_productivo || 0
+              );
+              
+              if (maxProb === (probs.productivo || 0)) label = "productivo";
+              else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
+              else label = "regular";
+            }
+            
+            contadores[label]++;
+          });
+
+          return {
+            fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
+            fechaCompleta: fecha,
+            productivo: contadores.productivo,
+            regular: contadores.regular,
+            no_productivo: contadores.no_productivo,
+            total: dataDia.users?.length || 0,
+          };
+        } catch (error) {
+          console.error(`Error cargando ${fecha}:`, error);
+          return {
+            fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
+            fechaCompleta: fecha,
+            productivo: 0,
+            regular: 0,
+            no_productivo: 0,
+            total: 0,
+          };
+        }
+      });
+
+      const resultados = await Promise.all(promesas);
+      setDatosOchoDias(resultados);
+    } catch (e) {
+      console.error("❌ Error cargando datos de 7 días:", e);
+    } finally {
+      setLoadingOchoDias(false);
+    }
+  }, [data]);
+
   useEffect(() => {
     cargarDatos();
-  }, [cargarDatos]);
+    cargarDatos7Dias();
+  }, [cargarDatos, cargarDatos7Dias]);
 
   useEffect(() => {
     if (!isToday || !autoRefresh) return;
 
     const interval = setInterval(() => {
       cargarDatos();
+      cargarDatos7Dias();
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [isToday, autoRefresh, cargarDatos]);
+  }, [isToday, autoRefresh, cargarDatos, cargarDatos7Dias]);
 
   const cambiarDia = (dias) => {
     const fechaActual = new Date(fecha);
     fechaActual.setDate(fechaActual.getDate() + dias);
     setFecha(fechaActual.toISOString().slice(0, 10));
+  };
+
+  const navegarADiaConColaborador = (userId, fechaDia) => {
+    navigate(`/productividad/${userId}?date=${fechaDia}`);
   };
 
   const procesarDatosGenerales = useCallback(() => {
@@ -491,8 +814,25 @@ export default function ReportesDiarios() {
       no_productivo: 0,
     };
 
+    // Usar la misma lógica que cargarDatos7Dias para sincronización
     data.users.forEach(user => {
-      const label = user.prediccion?.label || "regular";
+      // Usar prediccion.label si existe, sino usar la probabilidad más alta
+      let label = user.prediccion?.label || "regular";
+      
+      // Si no hay prediccion.label, calcular basándose en probabilidades
+      if (!user.prediccion?.label && user.prediccion?.probabilidades) {
+        const probs = user.prediccion.probabilidades;
+        const maxProb = Math.max(
+          probs.productivo || 0,
+          probs.regular || 0,
+          probs.no_productivo || 0
+        );
+        
+        if (maxProb === (probs.productivo || 0)) label = "productivo";
+        else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
+        else label = "regular";
+      }
+      
       contadores[label]++;
     });
 
@@ -781,6 +1121,107 @@ export default function ReportesDiarios() {
               </Typography>
 
               <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                {/* Gráfica de 7 días laborales - INTERACTIVA */}
+                <Grid item xs={12} lg={6}>
+                  <Card
+                    sx={{
+                      borderRadius: 3,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      cursor: loadingOchoDias ? "default" : "pointer",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        transform: loadingOchoDias ? "none" : "translateY(-4px)",
+                        boxShadow: loadingOchoDias ? "none" : `0 8px 24px ${alpha("#3b82f6", 0.2)}`,
+                        borderColor: loadingOchoDias ? "divider" : "#3b82f6",
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                        <Typography 
+                          variant="h6" 
+                          fontWeight={800}
+                          sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                        >
+                          📈 {isMobile ? "Últimos 7 días" : "Productividad Últimos 7 Días"}
+                        </Typography>
+                        <Tooltip title="Click para ver detalles o en un día para ver sus colaboradores">
+                          <IconButton 
+                            size="small" 
+                            disabled={loadingOchoDias}
+                            onClick={() => setModalActivo('siete_dias')}
+                          >
+                            <FullscreenIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                      
+                      {loadingOchoDias ? (
+                        <Box sx={{ height: isMobile ? 350 : 450, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CircularProgress />
+                        </Box>
+                      ) : (
+                        <Box 
+                          onClick={(event) => {
+                            // Detectar click en la gráfica
+                            const state = event.activeLabel;
+                            if (state) {
+                              const diaClickeado = datosOchoDias.find(d => d.fecha === state);
+                              if (diaClickeado) {
+                                setDiaSeleccionado(diaClickeado);
+                              }
+                            }
+                          }}
+                          sx={{ cursor: 'pointer' }}
+                        >
+                          <ResponsiveContainer width="100%" height={isMobile ? 350 : 450}>
+                            <BarChart 
+                              data={datosOchoDias} 
+                              margin={{ bottom: isMobile ? 60 : 80 }}
+                              onClick={(event) => {
+                                if (event && event.activeTooltipIndex !== undefined) {
+                                  const diaClickeado = datosOchoDias[event.activeTooltipIndex];
+                                  if (diaClickeado) {
+                                    setDiaSeleccionado(diaClickeado);
+                                  }
+                                }
+                              }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                              <XAxis
+                                dataKey="fecha"
+                                tick={{ fontSize: isMobile ? 8 : 10, fill: theme.palette.text.primary }}
+                                angle={-45}
+                                textAnchor="end"
+                                height={isMobile ? 60 : 80}
+                              />
+                              <YAxis tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.primary }} />
+                              <RechartsTooltip
+                                contentStyle={{
+                                  backgroundColor: theme.palette.background.paper,
+                                  border: `1px solid ${theme.palette.divider}`,
+                                  borderRadius: "8px",
+                                  color: theme.palette.text.primary,
+                                  fontSize: isMobile ? "12px" : "14px",
+                                }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: isMobile ? "11px" : "14px" }} />
+                              <Bar dataKey="productivo" stackId="a" fill={COLORS.productivo} name="Productivo" />
+                              <Bar dataKey="regular" stackId="a" fill={COLORS.regular} name="Regular" />
+                              <Bar dataKey="no_productivo" stackId="a" fill={COLORS.no_productivo} name="No Productivo" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      )}
+                      
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                        💡 Click en una barra para ver los colaboradores de ese día
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
                 {/* Gráfica Circular */}
                 <Grid item xs={12} lg={6}>
                   <Card
@@ -1206,6 +1647,22 @@ export default function ReportesDiarios() {
           onClose={() => setModalActivo(null)}
         />
       )}
+
+      {modalActivo === 'siete_dias' && (
+        <ModalGrafica
+          titulo={`📈 Productividad Últimos 7 Días Laborales`}
+          tipo="siete_dias"
+          datos={datosOchoDias}
+          onClose={() => setModalActivo(null)}
+        />
+      )}
+
+      {/* Modal para mostrar usuarios de un día */}
+      <ModalUsuariosDia 
+        diaSeleccionado={diaSeleccionado}
+        onClose={() => setDiaSeleccionado(null)}
+        onNavigateToDia={navegarADiaConColaborador}
+      />
     </Box>
   );
 }
