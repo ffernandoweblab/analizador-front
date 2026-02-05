@@ -1362,7 +1362,7 @@ export default function ReportesDiarios() {
                           fontSize: { xs: "1rem", sm: "1.25rem" }
                         }}
                       >
-                        {'⭐'} {isMobile ? "Comparativa" : "Comparativa de Usuarios"}
+                        {''} {isMobile ? "Comparativa" : "Comparativa de Usuarios"}
                       </Typography>
                       <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                         <RadarChart data={promedios}>
