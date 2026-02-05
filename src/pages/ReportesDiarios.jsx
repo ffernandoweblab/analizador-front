@@ -66,6 +66,26 @@ const COLORS = {
 
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
+// Funcion reutilizable para obtener el label correcto de un usuario
+function obtenerLabelUsuario(user) {
+  let label = user.prediccion?.label;
+  
+  if (!label && user.prediccion?.probabilidades) {
+    const probs = user.prediccion.probabilidades;
+    const maxProb = Math.max(
+      probs.productivo || 0,
+      probs.regular || 0,
+      probs.no_productivo || 0
+    );
+    
+    if (maxProb === (probs.productivo || 0)) label = "productivo";
+    else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
+    else label = "regular";
+  }
+  
+  return label || "regular";
+}
+
 function formatearTiempo(minutos) {
   if (!minutos || minutos === 0) return "0 min";
   if (minutos >= 60) {
@@ -77,16 +97,18 @@ function formatearTiempo(minutos) {
   return `${minutos} min`;
 }
 
-// Función para obtener los últimos N días laborales
-function obtenerDiasLaborales(diasRequeridos = 7) {
+// ✅ FUNCIÓN CORRECTA: Obtiene últimos 7 días SIN incluir HOY
+function obtenerDiasLaboralesAntesDe(diasRequeridos = 7) {
   const dias = [];
   const hoy = new Date();
   let fechaActual = new Date(hoy);
+  
+  // 🔑 Empezar desde AYER (no desde hoy)
+  fechaActual.setDate(fechaActual.getDate() - 1);
 
   while (dias.length < diasRequeridos) {
     const diaSemana = fechaActual.getDay();
 
-    // Solo agregar si NO es sábado (6) ni domingo (0)
     if (diaSemana !== 0 && diaSemana !== 6) {
       dias.push(fechaActual.toISOString().slice(0, 10));
     }
@@ -100,7 +122,6 @@ function obtenerDiasLaborales(diasRequeridos = 7) {
 // Modal para mostrar usuarios de un día seleccionado
 function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [usuariosDelDia, setUsuariosDelDia] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -143,7 +164,7 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
       }}
     >
       <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>📅 {diaSeleccionado.fecha}</span>
+        <span>{'📅'} {diaSeleccionado.fecha}</span>
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
@@ -189,7 +210,7 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
           </Grid>
 
           <Typography variant="subtitle2" fontWeight={800} sx={{ mt: 2 }}>
-            📋 Usuarios de ese día:
+            {'📋'} Usuarios de ese dia:
           </Typography>
 
           {loading ? (
@@ -198,7 +219,7 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
             </Box>
           ) : usuariosDelDia.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-              Sin datos para este día
+              Sin datos para este dia
             </Typography>
           ) : (
             <Stack spacing={1} sx={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -226,19 +247,19 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                     <Chip
-                      label={user.prediccion?.label || 'regular'}
+                      label={obtenerLabelUsuario(user)}
                       size="small"
                       sx={{
-                        bgcolor: alpha(COLORS[user.prediccion?.label || 'regular'], 0.2),
-                        color: COLORS[user.prediccion?.label || 'regular'],
+                        bgcolor: alpha(COLORS[obtenerLabelUsuario(user)], 0.2),
+                        color: COLORS[obtenerLabelUsuario(user)],
                         fontWeight: 700,
                       }}
                     />
                     <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
-                      ⏱️ {formatearTiempo(user.tiempo_total)}
+                      {'⏱️'} {formatearTiempo(user.tiempo_total)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
-                      📋 {user.actividades} actividades
+                      {'📋'} {user.actividades} actividades
                     </Typography>
                   </Stack>
                 </Box>
@@ -251,7 +272,7 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
   );
 }
 
-// Modal expandible para gráficas
+// Modal expandible para graficas
 function ModalGrafica({ titulo, tipo, datos, onClose }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -496,7 +517,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
   );
 }
 
-// Componente de paginación para tabla
+// Componente de paginacion para tabla
 function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
   const totalPaginas = Math.ceil(total / porPagina);
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
@@ -532,7 +553,7 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
           px: 1,
         }}
       >
-        Pág {paginaActual} de {totalPaginas}
+        {"Pág"} {paginaActual} de {totalPaginas}
       </Typography>
       
       <Button
@@ -549,7 +570,7 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
   );
 }
 
-// Componente de estadística
+// Componente de estadistica
 function StatCard({ icon: Icon, label, value, color }) {
   return (
     <Card
@@ -644,124 +665,54 @@ export default function ReportesDiarios() {
         ? `${BACKEND_URL}/api/productividad/hoy`
         : `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
 
-      console.log("📊 Cargando reportes desde:", url);
-      
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error(`Error ${res.status}: ${await res.text()}`);
       }
       
       const jsonData = await res.json();
-      
-      if (!jsonData.users || jsonData.users.length === 0) {
-        console.warn("⚠️ Sin datos de usuarios para esta fecha");
-        setData(jsonData);
-      } else {
-        console.log("✅ Datos cargados correctamente:", jsonData.users.length, "usuarios");
-        setData(jsonData);
-      }
-      
+      setData(jsonData);
       setPaginaUsuarios(1);
     } catch (e) {
-      console.error("❌ Error cargando datos:", e);
+      console.error("Error cargando datos:", e);
       setErr(e?.message || String(e));
     } finally {
       setLoading(false);
     }
   }, [fecha]);
 
-  // Cargar datos de 7 días laborales
+  // ✅ FIX: Usa obtenerDiasLaboralesAntesDe para excluir HOY
   const cargarDatos7Dias = useCallback(async () => {
     setLoadingOchoDias(true);
     try {
-      const diasLaborales = obtenerDiasLaborales(7);
-      const today = new Date().toISOString().slice(0, 10);
+      const diasLaborales = obtenerDiasLaboralesAntesDe(7);
       
-      const promesas = diasLaborales.map(async (fecha) => {
+      const promesas = diasLaborales.map(async (fechaDia) => {
         try {
-          // Si es hoy, usar los datos ya cargados en 'data'
-          if (fecha === today && data?.users) {
-            const contadores = {
-              productivo: 0,
-              regular: 0,
-              no_productivo: 0,
-            };
-
-            // Usar la misma lógica para contar
-            data.users.forEach(user => {
-              let label = user.prediccion?.label || "regular";
-              
-              if (!user.prediccion?.label && user.prediccion?.probabilidades) {
-                const probs = user.prediccion.probabilidades;
-                const maxProb = Math.max(
-                  probs.productivo || 0,
-                  probs.regular || 0,
-                  probs.no_productivo || 0
-                );
-                
-                if (maxProb === (probs.productivo || 0)) label = "productivo";
-                else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
-                else label = "regular";
-              }
-              
-              contadores[label]++;
-            });
-
-            return {
-              fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
-              fechaCompleta: fecha,
-              productivo: contadores.productivo,
-              regular: contadores.regular,
-              no_productivo: contadores.no_productivo,
-              total: data.users.length,
-            };
-          }
-
-          // Para otros días, hacer la consulta
-          const url = `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
+          const url = `${BACKEND_URL}/api/productividad/hoy?date=${fechaDia}`;
+          
           const res = await fetch(url);
           if (!res.ok) throw new Error('Error al cargar');
           const dataDia = await res.json();
 
-          const contadores = {
-            productivo: 0,
-            regular: 0,
-            no_productivo: 0,
-          };
-
-          // Usar la misma lógica que las otras gráficas para contar
+          const contadores = { productivo: 0, regular: 0, no_productivo: 0 };
           dataDia.users?.forEach(user => {
-            let label = user.prediccion?.label || "regular";
-            
-            if (!user.prediccion?.label && user.prediccion?.probabilidades) {
-              const probs = user.prediccion.probabilidades;
-              const maxProb = Math.max(
-                probs.productivo || 0,
-                probs.regular || 0,
-                probs.no_productivo || 0
-              );
-              
-              if (maxProb === (probs.productivo || 0)) label = "productivo";
-              else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
-              else label = "regular";
-            }
-            
-            contadores[label]++;
+            contadores[obtenerLabelUsuario(user)]++;
           });
 
           return {
-            fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
-            fechaCompleta: fecha,
+            fecha: new Date(fechaDia + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
+            fechaCompleta: fechaDia,
             productivo: contadores.productivo,
             regular: contadores.regular,
             no_productivo: contadores.no_productivo,
             total: dataDia.users?.length || 0,
           };
         } catch (error) {
-          console.error(`Error cargando ${fecha}:`, error);
+          console.error(`Error cargando ${fechaDia}:`, error);
           return {
-            fecha: new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
-            fechaCompleta: fecha,
+            fecha: new Date(fechaDia + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }),
+            fechaCompleta: fechaDia,
             productivo: 0,
             regular: 0,
             no_productivo: 0,
@@ -773,27 +724,36 @@ export default function ReportesDiarios() {
       const resultados = await Promise.all(promesas);
       setDatosOchoDias(resultados);
     } catch (e) {
-      console.error("❌ Error cargando datos de 7 días:", e);
+      console.error("Error cargando datos de 7 dias:", e);
     } finally {
       setLoadingOchoDias(false);
     }
-  }, [data]);
+  }, []);
 
+  // Cargar datos del dia seleccionado cuando cambia la fecha
   useEffect(() => {
     cargarDatos();
-    cargarDatos7Dias();
-  }, [cargarDatos, cargarDatos7Dias]);
+  }, [cargarDatos]);
 
+  // Cargar datos de 7 dias solo UNA VEZ al montar el componente
+  const datos7DiasCargados = React.useRef(false);
+  useEffect(() => {
+    if (!datos7DiasCargados.current) {
+      datos7DiasCargados.current = true;
+      cargarDatos7Dias();
+    }
+  }, [cargarDatos7Dias]);
+
+  // Auto-refresh solo para datos del dia actual
   useEffect(() => {
     if (!isToday || !autoRefresh) return;
 
     const interval = setInterval(() => {
       cargarDatos();
-      cargarDatos7Dias();
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [isToday, autoRefresh, cargarDatos, cargarDatos7Dias]);
+  }, [isToday, autoRefresh, cargarDatos]);
 
   const cambiarDia = (dias) => {
     const fechaActual = new Date(fecha);
@@ -808,32 +768,9 @@ export default function ReportesDiarios() {
   const procesarDatosGenerales = useCallback(() => {
     if (!data?.users) return [];
 
-    const contadores = {
-      productivo: 0,
-      regular: 0,
-      no_productivo: 0,
-    };
-
-    // Usar la misma lógica que cargarDatos7Dias para sincronización
+    const contadores = { productivo: 0, regular: 0, no_productivo: 0 };
     data.users.forEach(user => {
-      // Usar prediccion.label si existe, sino usar la probabilidad más alta
-      let label = user.prediccion?.label || "regular";
-      
-      // Si no hay prediccion.label, calcular basándose en probabilidades
-      if (!user.prediccion?.label && user.prediccion?.probabilidades) {
-        const probs = user.prediccion.probabilidades;
-        const maxProb = Math.max(
-          probs.productivo || 0,
-          probs.regular || 0,
-          probs.no_productivo || 0
-        );
-        
-        if (maxProb === (probs.productivo || 0)) label = "productivo";
-        else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
-        else label = "regular";
-      }
-      
-      contadores[label]++;
+      contadores[obtenerLabelUsuario(user)]++;
     });
 
     const total = data.users.length;
@@ -867,7 +804,7 @@ export default function ReportesDiarios() {
       .sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0))
       .slice(0, 8)
       .map(user => {
-        const label = user.prediccion?.label || "regular";
+        const label = obtenerLabelUsuario(user);
         const productivo = label === "productivo" ? 100 : label === "regular" ? 50 : 0;
         const regular = label === "regular" ? 100 : label === "productivo" ? 50 : 50;
         const no_productivo = label === "no_productivo" ? 100 : label === "regular" ? 50 : 0;
@@ -893,7 +830,7 @@ export default function ReportesDiarios() {
       tiempo: user.tiempo_total || 0,
       actividades: user.actividades || 0,
       revisiones: user.revisiones || 0,
-      estado: user.prediccion?.label || "regular",
+      estado: obtenerLabelUsuario(user),
     }));
 
   const datosUsuariosCompletos = usuarios
@@ -903,7 +840,7 @@ export default function ReportesDiarios() {
       tiempo: user.tiempo_total || 0,
       actividades: user.actividades || 0,
       revisiones: user.revisiones || 0,
-      estado: user.prediccion?.label || "regular",
+      estado: obtenerLabelUsuario(user),
     }));
 
   const indiceInicio = (paginaUsuarios - 1) * usuariosPorPagina;
@@ -967,7 +904,7 @@ export default function ReportesDiarios() {
                     fontSize: { xs: "0.875rem", sm: "1rem" }
                   }}
                 >
-                  {isMobile ? "Análisis del desempeño" : `Análisis detallado del desempeño ${isToday ? "en tiempo real" : "de la fecha seleccionada"}`}
+                  {isMobile ? "Analisis del desempeno" : `Analisis detallado del desempeno ${isToday ? "en tiempo real" : "de la fecha seleccionada"}`}
                 </Typography>
               </Box>
             </Stack>
@@ -983,7 +920,7 @@ export default function ReportesDiarios() {
                     flexWrap="wrap"
                   >
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: { sm: 1 } }}>
-                      <Tooltip title="Día anterior">
+                      <Tooltip title="Dia anterior">
                         <IconButton
                           onClick={() => cambiarDia(-1)}
                           size={isMobile ? "small" : "medium"}
@@ -1005,7 +942,7 @@ export default function ReportesDiarios() {
                         sx={{ minWidth: { xs: 140, sm: 180 }, flex: 1 }}
                       />
 
-                      <Tooltip title="Día siguiente">
+                      <Tooltip title="Dia siguiente">
                         <span>
                           <IconButton
                             onClick={() => cambiarDia(1)}
@@ -1043,7 +980,11 @@ export default function ReportesDiarios() {
                     <Button
                       variant="contained"
                       startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
-                      onClick={cargarDatos}
+                      onClick={() => {
+                        cargarDatos();
+                        datos7DiasCargados.current = false;
+                        cargarDatos7Dias();
+                      }}
                       disabled={loading}
                       fullWidth={isMobile}
                       size={isMobile ? "medium" : "large"}
@@ -1055,7 +996,7 @@ export default function ReportesDiarios() {
                         },
                       }}
                     >
-                      {loading ? "Cargando..." : (isMobile ? "Actualizar" : " Actualizar")}
+                      {loading ? "Cargando..." : (isMobile ? "Actualizar" : "Actualizar")}
                     </Button>
                   </Stack>
                 </Stack>
@@ -1066,12 +1007,12 @@ export default function ReportesDiarios() {
           {mostrarAvisoSinDatos && (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
               <Typography variant="body2">
-                📌 <strong>Sin datos aún para hoy.</strong> Los datos se mostrarán conforme vayan llegando.
+                {'📌'} <strong>Sin datos aun para hoy.</strong> Los datos se mostraran conforme vayan llegando.
               </Typography>
             </Alert>
           )}
 
-          {/* Estadísticas Clave */}
+          {/* Estadisticas Clave */}
           {distribucion.length > 0 && (
             <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               <Grid item xs={12} sm={6} md={3}>
@@ -1106,7 +1047,7 @@ export default function ReportesDiarios() {
             </Grid>
           )}
 
-          {/* Gráficas Principales */}
+          {/* Graficas Principales */}
           {usuarios.length > 0 && (
             <>
               <Typography 
@@ -1117,23 +1058,22 @@ export default function ReportesDiarios() {
                   fontSize: { xs: "1.25rem", sm: "1.5rem" }
                 }}
               >
-                Vista General {isToday && !isMobile ? "del Día" : ""}
+                Vista General {isToday && !isMobile ? "del Dia" : ""}
               </Typography>
 
               <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-                {/* Gráfica de 7 días laborales - INTERACTIVA */}
+                {/* Grafica de 7 dias laborales */}
                 <Grid item xs={12} lg={6}>
                   <Card
                     sx={{
                       borderRadius: 3,
                       border: "1px solid",
                       borderColor: "divider",
-                      cursor: loadingOchoDias ? "default" : "pointer",
                       transition: "all 0.3s ease",
                       "&:hover": {
-                        transform: loadingOchoDias ? "none" : "translateY(-4px)",
-                        boxShadow: loadingOchoDias ? "none" : `0 8px 24px ${alpha("#3b82f6", 0.2)}`,
-                        borderColor: loadingOchoDias ? "divider" : "#3b82f6",
+                        transform: "translateY(-4px)",
+                        boxShadow: `0 8px 24px ${alpha("#3b82f6", 0.2)}`,
+                        borderColor: "#3b82f6",
                       }
                     }}
                   >
@@ -1144,13 +1084,16 @@ export default function ReportesDiarios() {
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
-                          📈 {isMobile ? "Últimos 7 días" : "Productividad Últimos 7 Días"}
+                          {'📈'} {isMobile ? "Ultimos 7 dias" : "Productividad Ultimos 7 Dias"}
                         </Typography>
-                        <Tooltip title="Click para ver detalles o en un día para ver sus colaboradores">
+                        <Tooltip title="Click para ver detalles o en un dia para ver sus colaboradores">
                           <IconButton 
                             size="small" 
                             disabled={loadingOchoDias}
-                            onClick={() => setModalActivo('siete_dias')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalActivo('siete_dias');
+                            }}
                           >
                             <FullscreenIcon fontSize="small" />
                           </IconButton>
@@ -1162,19 +1105,7 @@ export default function ReportesDiarios() {
                           <CircularProgress />
                         </Box>
                       ) : (
-                        <Box 
-                          onClick={(event) => {
-                            // Detectar click en la gráfica
-                            const state = event.activeLabel;
-                            if (state) {
-                              const diaClickeado = datosOchoDias.find(d => d.fecha === state);
-                              if (diaClickeado) {
-                                setDiaSeleccionado(diaClickeado);
-                              }
-                            }
-                          }}
-                          sx={{ cursor: 'pointer' }}
-                        >
+                        <Box sx={{ cursor: 'pointer' }}>
                           <ResponsiveContainer width="100%" height={isMobile ? 350 : 450}>
                             <BarChart 
                               data={datosOchoDias} 
@@ -1216,13 +1147,13 @@ export default function ReportesDiarios() {
                       )}
                       
                       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
-                        💡 Click en una barra para ver los colaboradores de ese día
+                        {'💡'} Click en una barra para ver los colaboradores de ese dia
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
 
-                {/* Gráfica Circular */}
+                {/* Grafica Circular */}
                 <Grid item xs={12} lg={6}>
                   <Card
                     onClick={() => setModalActivo('distribucion')}
@@ -1246,7 +1177,7 @@ export default function ReportesDiarios() {
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
-                          🎯 {isMobile ? "Distribución" : "Distribución de Productividad"}
+                          {'🎯'} {isMobile ? "Distribucion" : "Distribucion de Productividad"}
                         </Typography>
                         <Tooltip title="Ver detalles">
                           <IconButton size="small">
@@ -1286,7 +1217,7 @@ export default function ReportesDiarios() {
                   </Card>
                 </Grid>
 
-                {/* Gráfica de Barras - Tiempo */}
+                {/* Grafica de Barras - Tiempo */}
                 <Grid item xs={12} lg={6}>
                   <Card
                     onClick={() => setModalActivo('tiempo')}
@@ -1310,7 +1241,7 @@ export default function ReportesDiarios() {
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
-                          ⏱️ {isMobile ? "Top 8 Tiempo" : "Top 8 Usuarios por Tiempo"}
+                          {'⏱️'} {isMobile ? "Top 8 Tiempo" : "Top 8 Usuarios por Tiempo"}
                         </Typography>
                         <Badge badgeContent={usuarios.length} color="primary">
                           <Tooltip title="Ver todos">
@@ -1351,7 +1282,7 @@ export default function ReportesDiarios() {
                   </Card>
                 </Grid>
 
-                {/* Gráfica de Barras - Actividades */}
+                {/* Grafica de Barras - Actividades */}
                 <Grid item xs={12} lg={6}>
                   <Card
                     onClick={() => setModalActivo('actividades')}
@@ -1375,7 +1306,7 @@ export default function ReportesDiarios() {
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
-                          📋 {isMobile ? "Act vs Rev" : "Top 8 Actividades vs Revisiones"}
+                          {'📋'} {isMobile ? "Act vs Rev" : "Top 8 Actividades vs Revisiones"}
                         </Typography>
                         <Badge badgeContent={usuarios.length} color="primary">
                           <Tooltip title="Ver todos">
@@ -1414,7 +1345,7 @@ export default function ReportesDiarios() {
                   </Card>
                 </Grid>
 
-                {/* Gráfica Radar */}
+                {/* Grafica Radar */}
                 <Grid item xs={12} lg={6}>
                   <Card
                     sx={{
@@ -1432,7 +1363,7 @@ export default function ReportesDiarios() {
                           fontSize: { xs: "1rem", sm: "1.25rem" }
                         }}
                       >
-                        ⭐ {isMobile ? "Comparativa" : "Comparativa de Usuarios"}
+                        {'⭐'} {isMobile ? "Comparativa" : "Comparativa de Usuarios"}
                       </Typography>
                       <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                         <RadarChart data={promedios}>
@@ -1542,7 +1473,7 @@ export default function ReportesDiarios() {
 
                       {/* Rows */}
                       {usuariosPaginados.map((user) => {
-                        const estado = user.prediccion?.label || "regular";
+                        const estado = obtenerLabelUsuario(user);
                         const colorEstado = COLORS[estado];
                         return (
                           <Box
@@ -1623,7 +1554,7 @@ export default function ReportesDiarios() {
       {/* Modales */}
       {modalActivo === 'distribucion' && (
         <ModalGrafica
-          titulo={`🎯 Distribución${!isMobile ? " Detallada" : ""} (${usuarios.length} usuarios)`}
+          titulo={`Distribucion${!isMobile ? " Detallada" : ""} (${usuarios.length} usuarios)`}
           tipo="distribucion"
           datos={distribucion}
           onClose={() => setModalActivo(null)}
@@ -1632,7 +1563,7 @@ export default function ReportesDiarios() {
 
       {modalActivo === 'tiempo' && (
         <ModalGrafica
-          titulo={`📊 ${isMobile ? "Tiempo Total" : "Todos los Usuarios - Tiempo Total"} (${usuarios.length})`}
+          titulo={`${isMobile ? "Tiempo Total" : "Todos los Usuarios - Tiempo Total"} (${usuarios.length})`}
           tipo="barras_tiempo"
           datos={datosUsuariosCompletos}
           onClose={() => setModalActivo(null)}
@@ -1641,7 +1572,7 @@ export default function ReportesDiarios() {
 
       {modalActivo === 'actividades' && (
         <ModalGrafica
-          titulo={`📋 ${isMobile ? "Act vs Rev" : "Actividades vs Revisiones"} (${usuarios.length})`}
+          titulo={`${isMobile ? "Act vs Rev" : "Actividades vs Revisiones"} (${usuarios.length})`}
           tipo="actividades_revisiones"
           datos={datosUsuariosCompletos}
           onClose={() => setModalActivo(null)}
@@ -1650,14 +1581,14 @@ export default function ReportesDiarios() {
 
       {modalActivo === 'siete_dias' && (
         <ModalGrafica
-          titulo={`📈 Productividad Últimos 7 Días Laborales`}
+          titulo="Productividad Ultimos 7 Dias Laborales"
           tipo="siete_dias"
           datos={datosOchoDias}
           onClose={() => setModalActivo(null)}
         />
       )}
 
-      {/* Modal para mostrar usuarios de un día */}
+      {/* Modal para mostrar usuarios de un dia */}
       <ModalUsuariosDia 
         diaSeleccionado={diaSeleccionado}
         onClose={() => setDiaSeleccionado(null)}
