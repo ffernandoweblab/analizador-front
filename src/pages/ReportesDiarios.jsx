@@ -121,7 +121,6 @@ function obtenerDiasLaboralesAntesDe(diasRequeridos = 7) {
 
 // Modal para mostrar usuarios de un día seleccionado
 function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
-  const theme = useTheme();
   const [usuariosDelDia, setUsuariosDelDia] = useState([]);
   const [loading, setLoading] = useState(true);
 
