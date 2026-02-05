@@ -40,6 +40,7 @@ import {
 // const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
+
 const LABEL_PRETTY = {
   no_productivo: "No productivo",
   regular: "Regular",

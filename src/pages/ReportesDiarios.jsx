@@ -97,7 +97,7 @@ function formatearTiempo(minutos) {
   return `${minutos} min`;
 }
 
-// ✅ FUNCIÓN CORRECTA: Obtiene últimos 7 días SIN incluir HOY
+//  FUNCIÓN CORRECTA: Obtiene últimos 7 días SIN incluir HOY
 function obtenerDiasLaboralesAntesDe(diasRequeridos = 7) {
   const dias = [];
   const hoy = new Date();
