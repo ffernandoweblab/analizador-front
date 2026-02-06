@@ -94,8 +94,8 @@ function obtenerDiasLaborales(diasRequeridos = 7) {
   return dias.reverse(); // Ordenar de más antiguo a más reciente
 }
 
-// Componente del Semáforo Visual
-function SemaforoVisual({ userId }) {
+// Componente del Semáforo Visual MODIFICADO
+function SemaforoVisual({ userId, fechaActual, onFechaClick }) {
   const [historial, setHistorial] = useState([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
 
@@ -231,20 +231,22 @@ function SemaforoVisual({ userId }) {
         <Grid container spacing={1.5}>
           {historial.map((dia) => {
             const estilo = obtenerColorSemaforo(dia.label);
-            const esHoy = dia.fecha === new Date().toISOString().slice(0, 10);
+            const esFechaActual = dia.fecha === fechaActual;
 
             return (
               <Grid item xs key={dia.fecha} sx={{ flex: 1, minWidth: 0 }}>
                 <Box
+                  onClick={() => onFechaClick(dia.fecha)}
                   sx={{
                     p: 2,
                     borderRadius: 2,
                     bgcolor: estilo.bg,
                     border: '2px solid',
-                    borderColor: esHoy ? estilo.border : 'transparent',
+                    borderColor: esFechaActual ? estilo.border : 'transparent',
                     textAlign: 'center',
                     transition: 'all 0.3s ease',
                     position: 'relative',
+                    cursor: 'pointer',
                     '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: `0 8px 16px ${alpha(estilo.color, 0.3)}`,
@@ -252,9 +254,9 @@ function SemaforoVisual({ userId }) {
                     },
                   }}
                 >
-                  {esHoy && (
+                  {esFechaActual && (
                     <Chip
-                      label="HOY"
+                      label="ACTUAL"
                       size="small"
                       sx={{
                         position: 'absolute',
@@ -696,7 +698,7 @@ export default function ProductividadDetalle() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -725,6 +727,11 @@ export default function ProductividadDetalle() {
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  // NUEVA FUNCIÓN: manejar clic en día del semáforo
+  const handleFechaClick = useCallback((nuevaFecha) => {
+    setSearchParams({ date: nuevaFecha });
+  }, [setSearchParams]);
 
   const pred = data?.prediccion ?? {};
   const label = pred?.label || "regular";
@@ -996,9 +1003,13 @@ export default function ProductividadDetalle() {
                   </Card>
                 </Grid>
 
-                {/* Semáforo Visual - Historial de últimos 7 días laborales */}
+                {/* Semáforo Visual - MODIFICADO: ahora recibe fechaActual y onFechaClick */}
                 <Grid item xs={12}>
-                  <SemaforoVisual userId={userId} />
+                  <SemaforoVisual 
+                    userId={userId} 
+                    fechaActual={day}
+                    onFechaClick={handleFechaClick}
+                  />
                 </Grid>
               </Grid>
 
