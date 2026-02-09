@@ -908,7 +908,7 @@ export default function ProductividadDetalle() {
                         textAlign: 'center',
                       }}
                     >
-                      Cargando datos...
+                      Cargando datos....
                     </Typography>
                   </Stack>
                 </Box>
