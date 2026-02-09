@@ -703,6 +703,7 @@ export default function ProductividadDetalle() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [prevData, setPrevData] = useState(null); // Para mantener datos anteriores mientras carga
 
   const dateParam = searchParams.get("date") || "";
   const day = useMemo(() => dateParam || new Date().toISOString().slice(0, 10), [dateParam]);
@@ -716,7 +717,12 @@ export default function ProductividadDetalle() {
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
-      setData(await res.json());
+      const newData = await res.json();
+      setData(newData);
+      setPrevData(newData);
+      
+      // Scroll hacia arriba SOLO cuando los datos ya estén cargados
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       setErr(e?.message || String(e));
     } finally {
@@ -728,12 +734,14 @@ export default function ProductividadDetalle() {
     cargar();
   }, [cargar]);
 
-  // NUEVA FUNCIÓN: manejar clic en día del semáforo
+  // FUNCIÓN MODIFICADA: manejar clic en día del semáforo
   const handleFechaClick = useCallback((nuevaFecha) => {
+    // Cambiar la fecha (esto provocará que se recarguen los datos)
+    // El scroll se hará automáticamente cuando termine de cargar en la función cargar()
     setSearchParams({ date: nuevaFecha });
   }, [setSearchParams]);
 
-  const pred = data?.prediccion ?? {};
+  const pred = (data || prevData)?.prediccion ?? {};
   const label = pred?.label || "regular";
   const probsRaw = pred?.probabilidades ?? pred?.probabilities ?? {};
   const probs = {
@@ -857,8 +865,55 @@ export default function ProductividadDetalle() {
                 </Grid>
               ))}
             </Grid>
-          ) : data ? (
+          ) : (data || prevData) ? (
             <>
+              {/* Overlay de carga cuando está recargando */}
+              {loading && (
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    bgcolor: alpha('#0a0e1a', 0.8),
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Stack spacing={3} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        border: '4px solid',
+                        borderColor: alpha('#3b82f6', 0.2),
+                        borderTopColor: '#3b82f6',
+                        animation: 'spin 1s linear infinite',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' },
+                        },
+                      }}
+                    />
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: '#3b82f6',
+                        fontWeight: 700,
+                        textAlign: 'center',
+                      }}
+                    >
+                      Cargando datos...
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
+
               {/* User Info & Summary Cards */}
               <Grid container spacing={{ xs: 2, sm: 3 }}>
                 {/* User Card */}
@@ -899,7 +954,7 @@ export default function ProductividadDetalle() {
                             boxShadow: `0 4px 12px ${alpha(labelStyle.color, 0.3)}`,
                           }}
                         >
-                          {(data?.user?.colaborador || "U").charAt(0).toUpperCase()}
+                          {((data || prevData)?.user?.colaborador || "U").charAt(0).toUpperCase()}
                         </Avatar>
 
                         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -922,9 +977,9 @@ export default function ProductividadDetalle() {
                       <Divider sx={{ mb: 2, borderColor: alpha("#fff", 0.05) }} />
 
                       <Stack spacing={{ xs: 0.5, sm: 1 }}>
-                        <InfoRow icon={BadgeOutlinedIcon} label="Nombre" value={data?.user?.colaborador} iconColor="#3b82f6" />
-                        <InfoRow icon={PersonOutlineOutlinedIcon} label="ID" value={data?.user?.user_id} iconColor="#8b5cf6" />
-                        <InfoRow icon={EmailOutlinedIcon} label="Email" value={data?.user?.email} iconColor="#10b981" />
+                        <InfoRow icon={BadgeOutlinedIcon} label="Nombre" value={(data || prevData)?.user?.colaborador} iconColor="#3b82f6" />
+                        <InfoRow icon={PersonOutlineOutlinedIcon} label="ID" value={(data || prevData)?.user?.user_id} iconColor="#8b5cf6" />
+                        <InfoRow icon={EmailOutlinedIcon} label="Email" value={(data || prevData)?.user?.email} iconColor="#10b981" />
                       </Stack>
                     </CardContent>
                   </Card>
@@ -951,19 +1006,19 @@ export default function ProductividadDetalle() {
 
                       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                         <Grid item xs={6} sm={4}>
-                          <StatBox icon={ChecklistOutlinedIcon} label="Actividades" value={data?.resumen?.actividades ?? 0} color="#3b82f6" />
+                          <StatBox icon={ChecklistOutlinedIcon} label="Actividades" value={(data || prevData)?.resumen?.actividades ?? 0} color="#3b82f6" />
                         </Grid>
                         <Grid item xs={6} sm={4}>
-                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Revisiones" value={data?.resumen?.revisiones ?? 0} color="#8b5cf6" />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Revisiones" value={(data || prevData)?.resumen?.revisiones ?? 0} color="#8b5cf6" />
                         </Grid>
                         <Grid item xs={6} sm={4}>
-                          <StatBox icon={AccessTimeOutlinedIcon} label="Tiempo total" value={formatearTiempo(data?.resumen?.tiempo_total ?? 0)} color="#10b981" />
+                          <StatBox icon={AccessTimeOutlinedIcon} label="Tiempo total" value={formatearTiempo((data || prevData)?.resumen?.tiempo_total ?? 0)} color="#10b981" />
                         </Grid>
                         <Grid item xs={6} sm={6}>
-                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Con duración" value={data?.resumen?.revisiones_con_duracion ?? 0} color="#f59e0b" />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Con duración" value={(data || prevData)?.resumen?.revisiones_con_duracion ?? 0} color="#f59e0b" />
                         </Grid>
                         <Grid item xs={6} sm={6}>
-                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Sin duración" value={data?.resumen?.revisiones_sin_duracion ?? 0} color="#ef4444" />
+                          <StatBox icon={AssignmentTurnedInOutlinedIcon} label="Sin duración" value={(data || prevData)?.resumen?.revisiones_sin_duracion ?? 0} color="#ef4444" />
                         </Grid>
                       </Grid>
                     </CardContent>
@@ -1031,9 +1086,9 @@ export default function ProductividadDetalle() {
                   </Typography>
                 </Stack>
 
-                {Array.isArray(data?.actividades) && data.actividades.length > 0 ? (
+                {Array.isArray((data || prevData)?.actividades) && (data || prevData).actividades.length > 0 ? (
                   <Stack spacing={{ xs: 1.5, sm: 2 }}>
-                    {data.actividades.map((act) => {
+                    {(data || prevData).actividades.map((act) => {
                       const t = String(act?.titulo || "Actividad");
                       const buckets = act?.revisiones || {};
                       const terminadas = buckets?.terminadas || [];
