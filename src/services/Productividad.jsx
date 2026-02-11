@@ -930,8 +930,9 @@ export default function Productividad() {
                                   letterSpacing: 0.5,
                                   fontSize: { xs: 12, sm: 13 },
                                 }}
-                              >
                                 
+                              >
+
                                 Distribución de probabilidades
                               </Typography>
 
