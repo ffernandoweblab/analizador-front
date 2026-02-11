@@ -1,4 +1,4 @@
-// src/pages/Productividad.jsx (o donde viva este componente)
+// src/pages/Productividad.jsx
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -32,14 +32,30 @@ import {
   Paper,
   IconButton,
   Grid,
+  Switch,
+  FormControlLabel,
   alpha,
   useMediaQuery,
   useTheme,
+  CircularProgress,
 } from "@mui/material";
 
 // const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
+// ✅ FUNCIONES DE FECHA CORREGIDAS
+function hoyISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function esHoyISO(fechaISO) {
+  return fechaISO === hoyISO();
+}
+
+function pasaronLas10AM() {
+  const ahora = new Date();
+  return ahora.getHours() > 10 || (ahora.getHours() === 10 && ahora.getMinutes() > 0);
+}
 
 const LABEL_PRETTY = {
   no_productivo: "No productivo",
@@ -200,7 +216,7 @@ function LoadingCard() {
   );
 }
 
-function StatCard({ icon: Icon, value, label, color = "primary" }) {
+function StatCard({ icon: Icon, value, label, color = "primary", loading = false }) {
   const colorMap = {
     primary: "#3b82f6",
     success: "#10b981",
@@ -230,7 +246,7 @@ function StatCard({ icon: Icon, value, label, color = "primary" }) {
         fontWeight={900}
         sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 18, sm: 22 } }}
       >
-        {value}
+        {loading ? <CircularProgress size={20} sx={{ color: colorMap[color] }} /> : value}
       </Typography>
       <Typography
         variant="caption"
@@ -247,6 +263,50 @@ function StatCard({ icon: Icon, value, label, color = "primary" }) {
   );
 }
 
+// ✅ FUNCIÓN OPTIMIZADA: Obtener datos de revisiones terminadas de un usuario
+async function obtenerDatosTerminadas(userId, fecha) {
+  try {
+    const qs = fecha ? `?date=${encodeURIComponent(fecha)}` : "";
+    const url = `${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(userId)}${qs}`;
+    
+    const res = await fetch(url);
+    if (!res.ok) return { revisiones: 0, actividades: 0, tiempo: 0 };
+    
+    const data = await res.json();
+    
+    // Contar revisiones terminadas, actividades con terminadas, y tiempo total
+    let totalTerminadas = 0;
+    let actividadesConTerminadas = 0;
+    let tiempoTotalTerminadas = 0;
+    
+    if (data?.actividades && Array.isArray(data.actividades)) {
+      for (const actividad of data.actividades) {
+        const terminadas = actividad?.revisiones?.terminadas || [];
+        
+        if (terminadas.length > 0) {
+          actividadesConTerminadas++;
+          totalTerminadas += terminadas.length;
+          
+          // Sumar el tiempo de cada revisión terminada
+          for (const revision of terminadas) {
+            const duracion = Number(revision?.duracionMin ?? 0) || 0;
+            tiempoTotalTerminadas += duracion;
+          }
+        }
+      }
+    }
+    
+    return {
+      revisiones: totalTerminadas,
+      actividades: actividadesConTerminadas,
+      tiempo: tiempoTotalTerminadas
+    };
+  } catch (error) {
+    console.error(`Error obteniendo datos terminadas para ${userId}:`, error);
+    return { revisiones: 0, actividades: 0, tiempo: 0 };
+  }
+}
+
 export default function Productividad() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -261,16 +321,7 @@ export default function Productividad() {
   const [, setSearchParams] = useSearchParams();
   const location = useLocation();
 
-  const today = useMemo(() => {
-    const now = new Date();
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Mexico_City",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    return fmt.format(now);
-  }, []);
+  const today = useMemo(() => hoyISO(), []);
 
   const [fecha, setFecha] = useState(() => {
     const sp = new URLSearchParams(location.search);
@@ -285,6 +336,11 @@ export default function Productividad() {
 
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
+  const [mostrarTodasLasRevisiones, setMostrarTodasLasRevisiones] = useState(false);
+  
+  // ✅ ESTADOS OPTIMIZADOS - Ahora guardamos un objeto con más datos
+  const [datosTerminadasCache, setDatosTerminadasCache] = useState({});
+  const [usuariosCargando, setUsuariosCargando] = useState(new Set());
 
   const addDaysISO = (iso, delta) => {
     const d = new Date(`${iso}T00:00:00`);
@@ -299,7 +355,14 @@ export default function Productividad() {
     } else {
       setSearchParams({ date: next }, { replace: true });
     }
+    setMostrarTodasLasRevisiones(false);
+    setDatosTerminadasCache({});
+    setUsuariosCargando(new Set());
   };
+
+  const esHoyActual = esHoyISO(fecha);
+  const pasaronLas10 = pasaronLas10AM();
+  const debeRestringirRevisiones = esHoyActual && pasaronLas10;
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -312,7 +375,11 @@ export default function Productividad() {
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
-      setData(await res.json());
+      const newData = await res.json();
+      setData(newData);
+      
+      setDatosTerminadasCache({});
+      setUsuariosCargando(new Set());
     } catch (e) {
       setErr(e?.message || String(e));
     } finally {
@@ -325,6 +392,28 @@ export default function Productividad() {
     const id = setInterval(cargar, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [cargar]);
+
+  // ✅ CARGAR DATOS TERMINADAS PARA UN USUARIO ESPECÍFICO
+  const cargarDatosUsuario = useCallback(async (userId) => {
+    if (datosTerminadasCache[userId] !== undefined || usuariosCargando.has(userId)) {
+      return; // Ya está cargado o cargando
+    }
+
+    setUsuariosCargando(prev => new Set(prev).add(userId));
+    
+    const datos = await obtenerDatosTerminadas(userId, fecha);
+    
+    setDatosTerminadasCache(prev => ({
+      ...prev,
+      [userId]: datos
+    }));
+    
+    setUsuariosCargando(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(userId);
+      return newSet;
+    });
+  }, [fecha, datosTerminadasCache, usuariosCargando]);
 
   const counts = useMemo(() => {
     const base = { todos: 0, productivo: 0, regular: 0, no_productivo: 0, sin_actividad: 0 };
@@ -357,6 +446,15 @@ export default function Productividad() {
 
     return usuariosRaw;
   }, [data, busqueda, filtroEstado]);
+
+  // ✅ CARGAR DATOS CUANDO SE NECESITAN
+  useEffect(() => {
+    if (debeRestringirRevisiones && !mostrarTodasLasRevisiones && usuarios.length > 0) {
+      usuarios.forEach(u => {
+        cargarDatosUsuario(u.user_id);
+      });
+    }
+  }, [usuarios, debeRestringirRevisiones, mostrarTodasLasRevisiones, cargarDatosUsuario]);
 
   const onGoDetalle = useCallback(
     (userId) => {
@@ -449,7 +547,6 @@ export default function Productividad() {
               alignItems={{ sm: "center" }}
               sx={{ width: { xs: "100%", md: "auto" } }}
             >
-              {/* Navegador de fecha */}
               <Stack
                 direction="row"
                 spacing={1}
@@ -500,6 +597,34 @@ export default function Productividad() {
                   <ChevronRightRoundedIcon />
                 </IconButton>
               </Stack>
+
+              {debeRestringirRevisiones && (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={mostrarTodasLasRevisiones}
+                      onChange={(e) => setMostrarTodasLasRevisiones(e.target.checked)}
+                      sx={{
+                        "& .MuiSwitch-switchBase.Mui-checked": {
+                          color: "#3b82f6",
+                          "&:hover": {
+                            bgcolor: alpha("#3b82f6", 0.08),
+                          },
+                        },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#3b82f6",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontSize: { xs: "0.85rem", sm: "0.9rem" } }}>
+                      Ver todas
+                    </Typography>
+                  }
+                  sx={{ m: 0, ml: { xs: 0, sm: 1 } }}
+                />
+              )}
 
               <Button
                 fullWidth={isMobile}
@@ -645,6 +770,32 @@ export default function Productividad() {
                   productivo: toProb(probsRaw.productivo),
                 };
 
+                // ✅ LÓGICA MEJORADA - Ahora incluye actividades y tiempo
+                const datosOriginales = {
+                  actividades: Number(u?.actividades ?? 0) || 0,
+                  revisiones: Number(u?.revisiones ?? 0),
+                  tiempo: Number(u?.tiempo_total ?? 0) || 0
+                };
+                
+                const datosTerminadas = datosTerminadasCache[u.user_id];
+                const estaCargando = usuariosCargando.has(u.user_id);
+                
+                const mostrarRestringido = debeRestringirRevisiones && !mostrarTodasLasRevisiones;
+                
+                const actividadesAMostrar = mostrarRestringido
+                  ? (datosTerminadas?.actividades ?? 0)
+                  : datosOriginales.actividades;
+                
+                const revisionesAMostrar = mostrarRestringido
+                  ? (datosTerminadas?.revisiones ?? 0)
+                  : datosOriginales.revisiones;
+                
+                const tiempoAMostrar = mostrarRestringido
+                  ? (datosTerminadas?.tiempo ?? 0)
+                  : datosOriginales.tiempo;
+
+                const labelRevisiones = mostrarRestringido ? "Terminadas" : "Revisiones";
+
                 return (
                   <Grid item key={u.user_id} xs={12} sm={6} md={4}>
                     <Card
@@ -675,7 +826,6 @@ export default function Productividad() {
                       <CardActionArea onClick={() => onGoDetalle(u.user_id)}>
                         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                           <Stack spacing={{ xs: 2, sm: 2.5 }}>
-                            {/* User Header */}
                             <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between">
                               <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
                                 <Avatar
@@ -731,35 +881,36 @@ export default function Productividad() {
 
                             <Divider sx={{ borderColor: alpha("#fff", 0.08) }} />
 
-                            {/* Stats */}
                             <Grid container spacing={1.5}>
                               <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={ChecklistOutlinedIcon}
-                                  value={Number(u?.actividades ?? 0) || 0}
+                                  value={actividadesAMostrar}
                                   label="Actividades"
                                   color="primary"
+                                  loading={estaCargando && mostrarRestringido}
                                 />
                               </Grid>
                               <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={AssignmentTurnedInOutlinedIcon}
-                                  value={Number(u?.revisiones ?? 0) || 0}
-                                  label="Revisiones"
+                                  value={revisionesAMostrar}
+                                  label={labelRevisiones}
                                   color="success"
+                                  loading={estaCargando && mostrarRestringido}
                                 />
                               </Grid>
                               <Grid item xs={12} sm={4}>
                                 <StatCard
                                   icon={AccessTimeOutlinedIcon}
-                                  value={formatearTiempo(u?.tiempo_total)}
+                                  value={formatearTiempo(tiempoAMostrar)}
                                   label="Tiempo"
                                   color="warning"
+                                  loading={estaCargando && mostrarRestringido}
                                 />
                               </Grid>
                             </Grid>
 
-                            {/* Probability Distribution */}
                             <Box
                               sx={{
                                 p: { xs: 2, sm: 2.5 },
