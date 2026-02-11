@@ -931,6 +931,7 @@ export default function Productividad() {
                                   fontSize: { xs: 12, sm: 13 },
                                 }}
                               >
+                                
                                 Distribución de probabilidades
                               </Typography>
 
