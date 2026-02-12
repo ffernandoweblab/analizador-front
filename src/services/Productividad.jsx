@@ -48,14 +48,22 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function esHoyISO(fechaISO) {
-  return fechaISO === hoyISO();
-}
 
-function pasaronLas10AM() {
+
+function pasaronLas11AM() {
   const ahora = new Date();
   return ahora.getHours() > 10 || (ahora.getHours() === 10 && ahora.getMinutes() > 0);
 }
+
+function msHastaLas11AM() {
+  const ahora = new Date();
+  const objetivo = new Date();
+  objetivo.setHours(11, 0, 0, 0);
+  const ms = objetivo.getTime() - ahora.getTime();
+  return ms > 0 ? ms : 0;
+}
+
+
 
 const LABEL_PRETTY = {
   no_productivo: "No productivo",
@@ -268,26 +276,24 @@ async function obtenerDatosTerminadas(userId, fecha) {
   try {
     const qs = fecha ? `?date=${encodeURIComponent(fecha)}` : "";
     const url = `${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(userId)}${qs}`;
-    
+
     const res = await fetch(url);
     if (!res.ok) return { revisiones: 0, actividades: 0, tiempo: 0 };
-    
+
     const data = await res.json();
-    
-    // Contar revisiones terminadas, actividades con terminadas, y tiempo total
+
     let totalTerminadas = 0;
     let actividadesConTerminadas = 0;
     let tiempoTotalTerminadas = 0;
-    
+
     if (data?.actividades && Array.isArray(data.actividades)) {
       for (const actividad of data.actividades) {
         const terminadas = actividad?.revisiones?.terminadas || [];
-        
+
         if (terminadas.length > 0) {
           actividadesConTerminadas++;
           totalTerminadas += terminadas.length;
-          
-          // Sumar el tiempo de cada revisión terminada
+
           for (const revision of terminadas) {
             const duracion = Number(revision?.duracionMin ?? 0) || 0;
             tiempoTotalTerminadas += duracion;
@@ -295,11 +301,11 @@ async function obtenerDatosTerminadas(userId, fecha) {
         }
       }
     }
-    
+
     return {
       revisiones: totalTerminadas,
       actividades: actividadesConTerminadas,
-      tiempo: tiempoTotalTerminadas
+      tiempo: tiempoTotalTerminadas,
     };
   } catch (error) {
     console.error(`Error obteniendo datos terminadas para ${userId}:`, error);
@@ -336,9 +342,15 @@ export default function Productividad() {
 
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
+
+  // ✅ Este switch ahora controla el modo:
+  // true  -> /api/productividad/hoy (planeado/proyección)
+  // false -> /api/productividad/hoy?date=YYYY-MM-DD (real/hecho)
   const [mostrarTodasLasRevisiones, setMostrarTodasLasRevisiones] = useState(false);
-  
-  // ✅ ESTADOS OPTIMIZADOS - Ahora guardamos un objeto con más datos
+
+  // ✅ SWITCH DEFAULT POR HORA (solo default, respeta al usuario)
+  const [userTocoSwitch, setUserTocoSwitch] = useState(false);
+
   const [datosTerminadasCache, setDatosTerminadasCache] = useState({});
   const [usuariosCargando, setUsuariosCargando] = useState(new Set());
 
@@ -355,21 +367,53 @@ export default function Productividad() {
     } else {
       setSearchParams({ date: next }, { replace: true });
     }
+
+    // ✅ SWITCH DEFAULT POR HORA: al cambiar fecha, vuelve a default
+    setUserTocoSwitch(false);
+
+    // Default a modo "real" al cambiar fecha (mantengo tu comportamiento)
     setMostrarTodasLasRevisiones(false);
     setDatosTerminadasCache({});
     setUsuariosCargando(new Set());
   };
 
-  const esHoyActual = esHoyISO(fecha);
-  const pasaronLas10 = pasaronLas10AM();
-  const debeRestringirRevisiones = esHoyActual && pasaronLas10;
+  // ✅ SWITCH DEFAULT POR HORA:
+  // - Hoy + antes de 11 => ON por default
+  // - Hoy + después de 11 => OFF por default
+  // - Si el usuario lo tocó, no se le pisa
+  // - Si llegan las 11 con la página abierta, se apaga SOLO si no lo tocó
+  useEffect(() => {
+    const esHoy = fecha === today;
+
+    if (!esHoy) {
+      if (!userTocoSwitch) setMostrarTodasLasRevisiones(false);
+      return;
+    }
+
+    if (!userTocoSwitch) {
+      setMostrarTodasLasRevisiones(!pasaronLas11AM());
+    }
+
+    if (pasaronLas11AM()) return;
+
+    const ms = msHastaLas11AM();
+    const id = setTimeout(() => {
+      setMostrarTodasLasRevisiones((prev) => (userTocoSwitch ? prev : false));
+    }, ms);
+
+    return () => clearTimeout(id);
+  }, [fecha, today, userTocoSwitch]);
+  const esHoy = useMemo(() => fecha === today, [fecha, today]);
+
+
+  // ✅ FIX: siempre mostrar lo que venga de la API principal (hoy vs hoy?date)
+  const debeRestringirRevisiones = false;
 
   const cargar = useCallback(async () => {
     setLoading(true);
     setErr("");
     try {
-      const isToday = fecha === today;
-      const url = isToday
+      const url = mostrarTodasLasRevisiones
         ? `${BACKEND_URL}/api/productividad/hoy`
         : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
 
@@ -377,7 +421,7 @@ export default function Productividad() {
       if (!res.ok) throw new Error(await res.text());
       const newData = await res.json();
       setData(newData);
-      
+
       setDatosTerminadasCache({});
       setUsuariosCargando(new Set());
     } catch (e) {
@@ -385,7 +429,7 @@ export default function Productividad() {
     } finally {
       setLoading(false);
     }
-  }, [fecha, today]);
+  }, [fecha, mostrarTodasLasRevisiones]);
 
   useEffect(() => {
     cargar();
@@ -393,27 +437,29 @@ export default function Productividad() {
     return () => clearInterval(id);
   }, [cargar]);
 
-  // ✅ CARGAR DATOS TERMINADAS PARA UN USUARIO ESPECÍFICO
-  const cargarDatosUsuario = useCallback(async (userId) => {
-    if (datosTerminadasCache[userId] !== undefined || usuariosCargando.has(userId)) {
-      return; // Ya está cargado o cargando
-    }
+  const cargarDatosUsuario = useCallback(
+    async (userId) => {
+      if (datosTerminadasCache[userId] !== undefined || usuariosCargando.has(userId)) {
+        return;
+      }
 
-    setUsuariosCargando(prev => new Set(prev).add(userId));
-    
-    const datos = await obtenerDatosTerminadas(userId, fecha);
-    
-    setDatosTerminadasCache(prev => ({
-      ...prev,
-      [userId]: datos
-    }));
-    
-    setUsuariosCargando(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(userId);
-      return newSet;
-    });
-  }, [fecha, datosTerminadasCache, usuariosCargando]);
+      setUsuariosCargando((prev) => new Set(prev).add(userId));
+
+      const datos = await obtenerDatosTerminadas(userId, fecha);
+
+      setDatosTerminadasCache((prev) => ({
+        ...prev,
+        [userId]: datos,
+      }));
+
+      setUsuariosCargando((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    },
+    [fecha, datosTerminadasCache, usuariosCargando]
+  );
 
   const counts = useMemo(() => {
     const base = { todos: 0, productivo: 0, regular: 0, no_productivo: 0, sin_actividad: 0 };
@@ -447,14 +493,13 @@ export default function Productividad() {
     return usuariosRaw;
   }, [data, busqueda, filtroEstado]);
 
-  // ✅ CARGAR DATOS CUANDO SE NECESITAN
   useEffect(() => {
-    if (debeRestringirRevisiones && !mostrarTodasLasRevisiones && usuarios.length > 0) {
-      usuarios.forEach(u => {
+    if (debeRestringirRevisiones && usuarios.length > 0) {
+      usuarios.forEach((u) => {
         cargarDatosUsuario(u.user_id);
       });
     }
-  }, [usuarios, debeRestringirRevisiones, mostrarTodasLasRevisiones, cargarDatosUsuario]);
+  }, [usuarios, debeRestringirRevisiones, cargarDatosUsuario]);
 
   const onGoDetalle = useCallback(
     (userId) => {
@@ -598,18 +643,19 @@ export default function Productividad() {
                 </IconButton>
               </Stack>
 
-              {debeRestringirRevisiones && (
+              {esHoy && (
                 <FormControlLabel
                   control={
                     <Switch
                       checked={mostrarTodasLasRevisiones}
-                      onChange={(e) => setMostrarTodasLasRevisiones(e.target.checked)}
+                      onChange={() => {
+                        setUserTocoSwitch(true);
+                        setMostrarTodasLasRevisiones((prev) => !prev);
+                      }}
                       sx={{
                         "& .MuiSwitch-switchBase.Mui-checked": {
                           color: "#3b82f6",
-                          "&:hover": {
-                            bgcolor: alpha("#3b82f6", 0.08),
-                          },
+                          "&:hover": { bgcolor: alpha("#3b82f6", 0.08) },
                         },
                         "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
                           backgroundColor: "#3b82f6",
@@ -618,13 +664,18 @@ export default function Productividad() {
                     />
                   }
                   label={
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontSize: { xs: "0.85rem", sm: "0.9rem" } }}>
-                      Ver todas
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
+                    >
+                      {mostrarTodasLasRevisiones ? "Modo agenda (completo)" : "Modo hecho (solo terminadas)"}
                     </Typography>
                   }
                   sx={{ m: 0, ml: { xs: 0, sm: 1 } }}
                 />
               )}
+
+
 
               <Button
                 fullWidth={isMobile}
@@ -770,29 +821,20 @@ export default function Productividad() {
                   productivo: toProb(probsRaw.productivo),
                 };
 
-                // ✅ LÓGICA MEJORADA - Ahora incluye actividades y tiempo
                 const datosOriginales = {
                   actividades: Number(u?.actividades ?? 0) || 0,
-                  revisiones: Number(u?.revisiones ?? 0),
-                  tiempo: Number(u?.tiempo_total ?? 0) || 0
+                  revisiones: Number(u?.revisiones ?? 0) || 0,
+                  tiempo: Number(u?.tiempo_total ?? 0) || 0,
                 };
-                
+
                 const datosTerminadas = datosTerminadasCache[u.user_id];
                 const estaCargando = usuariosCargando.has(u.user_id);
-                
-                const mostrarRestringido = debeRestringirRevisiones && !mostrarTodasLasRevisiones;
-                
-                const actividadesAMostrar = mostrarRestringido
-                  ? (datosTerminadas?.actividades ?? 0)
-                  : datosOriginales.actividades;
-                
-                const revisionesAMostrar = mostrarRestringido
-                  ? (datosTerminadas?.revisiones ?? 0)
-                  : datosOriginales.revisiones;
-                
-                const tiempoAMostrar = mostrarRestringido
-                  ? (datosTerminadas?.tiempo ?? 0)
-                  : datosOriginales.tiempo;
+
+                const mostrarRestringido = debeRestringirRevisiones;
+
+                const actividadesAMostrar = mostrarRestringido ? (datosTerminadas?.actividades ?? 0) : datosOriginales.actividades;
+                const revisionesAMostrar = mostrarRestringido ? (datosTerminadas?.revisiones ?? 0) : datosOriginales.revisiones;
+                const tiempoAMostrar = mostrarRestringido ? (datosTerminadas?.tiempo ?? 0) : datosOriginales.tiempo;
 
                 const labelRevisiones = mostrarRestringido ? "Terminadas" : "Revisiones";
 
@@ -930,9 +972,7 @@ export default function Productividad() {
                                   letterSpacing: 0.5,
                                   fontSize: { xs: 12, sm: 13 },
                                 }}
-                                
                               >
-
                                 Distribución de probabilidades
                               </Typography>
 

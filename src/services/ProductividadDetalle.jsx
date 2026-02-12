@@ -31,9 +31,13 @@ import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurned
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import { FormControlLabel, Switch, Tooltip } from "@mui/material";
+
+
 
 //const BACKEND_URL_DETAIL = "http://localhost:3001";
+
 const BACKEND_URL_DETAIL = "https://backend-1-azu0.onrender.com";
 
 const LABEL_COLORS = {
@@ -65,6 +69,11 @@ function formatearTiempo(minutos) {
   return `${m} min`;
 }
 
+function isTodayISO(dayISO) {
+  return dayISO === new Date().toISOString().slice(0, 10);
+}
+
+
 function toProb(v) {
   const n = typeof v === "string" ? Number.parseFloat(v) : Number(v);
   if (!Number.isFinite(n)) return 0;
@@ -72,6 +81,16 @@ function toProb(v) {
   if (n > 1) return 1;
   return n;
 }
+function normalizePhoneDigits(phone) {
+  return String(phone || "").replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppUrl(phone) {
+  const digits = normalizePhoneDigits(phone);
+  if (!digits) return "";
+  return `https://wa.me/${digits}`;
+}
+
 
 // Función para obtener los últimos N días laborales (excluyendo sábados y domingos)
 function obtenerDiasLaborales(diasRequeridos = 7) {
@@ -434,7 +453,7 @@ function ProbRow({ label, value, color }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value, iconColor = "#3b82f6" }) {
+function InfoRow({ icon: Icon, label, value, iconColor = "#3b82f6", href }) {
   return (
     <Stack
       direction="row"
@@ -480,8 +499,20 @@ function InfoRow({ icon: Icon, label, value, iconColor = "#3b82f6" }) {
             wordBreak: "break-word",
           }}
         >
-          {value || "N/A"}
+          {href && value ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit", textDecoration: "underline" }}
+            >
+              {value}
+            </a>
+          ) : (
+            value || "N/A"
+          )}
         </Typography>
+
       </Box>
     </Stack>
   );
@@ -708,31 +739,66 @@ export default function ProductividadDetalle() {
   const dateParam = searchParams.get("date") || "";
   const day = useMemo(() => dateParam || new Date().toISOString().slice(0, 10), [dateParam]);
 
+  // switch: ON = agenda (completo), OFF = hecho (terminadas)
+  const [modeOverride, setModeOverride] = useState(null); // null = usar backend default
+  const modeEffective = modeOverride ?? ((data || prevData)?.meta?.mode ?? null);
+
+  // checked: true => agenda
+  const switchChecked = modeEffective ? modeEffective === "agenda" : true;
+
+  const isCurrentDay = useMemo(() => isTodayISO(day), [day]);
+
+
   const cargar = useCallback(async () => {
     setLoading(true);
     setErr("");
     try {
-      const qs = dateParam ? `?date=${encodeURIComponent(dateParam)}` : "";
+      const params = new URLSearchParams();
+
+if (dateParam) params.set("date", dateParam);
+
+// solo manda mode si es hoy (si no es hoy, forzamos hecho)
+if (isCurrentDay) {
+  if (modeOverride) params.set("mode", modeOverride); // agenda|hecho
+} else {
+  params.set("mode", "hecho");
+}
+
+      // si quieres mantener hours fijo:
+      // params.set("hours", "work"); // o "all" si quieres
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
       const url = `${BACKEND_URL_DETAIL}/api/productividad/usuario/${encodeURIComponent(userId)}${qs}`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
       const newData = await res.json();
+
       setData(newData);
       setPrevData(newData);
-      
-      // Scroll hacia arriba SOLO cuando los datos ya estén cargados
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setErr(e?.message || String(e));
     } finally {
       setLoading(false);
     }
-  }, [userId, dateParam]);
+  }, [userId, dateParam, modeOverride, isCurrentDay]);
+
+
 
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  useEffect(() => {
+  if (!isCurrentDay) {
+    setModeOverride("hecho"); // fuerza hecho en días pasados
+  } else {
+    setModeOverride(null); // vuelve a auto al regresar a hoy
+  }
+}, [isCurrentDay]);
+
 
   // FUNCIÓN MODIFICADA: manejar clic en día del semáforo
   const handleFechaClick = useCallback((nuevaFecha) => {
@@ -740,6 +806,12 @@ export default function ProductividadDetalle() {
     // El scroll se hará automáticamente cuando termine de cargar en la función cargar()
     setSearchParams({ date: nuevaFecha });
   }, [setSearchParams]);
+
+
+  const handleModeToggle = useCallback((e) => {
+    const checked = e.target.checked;
+    setModeOverride(checked ? "agenda" : "hecho");
+  }, []);
 
   const pred = (data || prevData)?.prediccion ?? {};
   const label = pred?.label || "regular";
@@ -827,6 +899,39 @@ export default function ProductividadDetalle() {
             >
               Fecha: {day}
             </Typography>
+
+            {isCurrentDay && (
+  <Stack direction="row" spacing={2} alignItems="center" sx={{ ml: { xs: 0, sm: 7 }, mt: 1 }}>
+    <Tooltip title="Agenda: muestra todo (terminadas/confirmadas/pendientes).">
+      <FormControlLabel
+        control={
+          <Switch
+            checked={switchChecked}
+            onChange={handleModeToggle}
+            disabled={loading}
+          />
+        }
+        label={switchChecked ? "Modo agenda (completo)" : "Modo hecho (solo terminadas)"}
+        sx={{ color: "text.secondary" }}
+      />
+    </Tooltip>
+
+    {/* botón pequeño para volver al default automático del backend */}
+    {modeOverride && (
+      <Button
+        size="small"
+        variant="text"
+        onClick={() => setModeOverride(null)}
+        disabled={loading}
+        sx={{ color: "#3b82f6", fontWeight: 700 }}
+      >
+        Auto
+      </Button>
+    )}
+  </Stack>
+)}
+
+
           </Box>
 
           {err ? (
@@ -959,7 +1064,7 @@ export default function ProductividadDetalle() {
 
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography variant="h6" fontWeight={800} noWrap sx={{ mb: 0.5 }}>
-                            Usuario
+                            {(data || prevData)?.user?.colaborador || "Usuario"}
                           </Typography>
                           <Chip
                             label={label.replace("_", " ").toUpperCase()}
@@ -977,9 +1082,10 @@ export default function ProductividadDetalle() {
                       <Divider sx={{ mb: 2, borderColor: alpha("#fff", 0.05) }} />
 
                       <Stack spacing={{ xs: 0.5, sm: 1 }}>
-                        <InfoRow icon={BadgeOutlinedIcon} label="Nombre" value={(data || prevData)?.user?.colaborador} iconColor="#3b82f6" />
                         <InfoRow icon={PersonOutlineOutlinedIcon} label="ID" value={(data || prevData)?.user?.user_id} iconColor="#8b5cf6" />
                         <InfoRow icon={EmailOutlinedIcon} label="Email" value={(data || prevData)?.user?.email} iconColor="#10b981" />
+                        <InfoRow icon={PhoneOutlinedIcon} label="WhatsApp" value={(data || prevData)?.user?.phone} href={buildWhatsAppUrl((data || prevData)?.user?.phone)} iconColor="#22c55e" />
+
                       </Stack>
                     </CardContent>
                   </Card>
@@ -1060,8 +1166,8 @@ export default function ProductividadDetalle() {
 
                 {/* Semáforo Visual - MODIFICADO: ahora recibe fechaActual y onFechaClick */}
                 <Grid item xs={12}>
-                  <SemaforoVisual 
-                    userId={userId} 
+                  <SemaforoVisual
+                    userId={userId}
                     fechaActual={day}
                     onFechaClick={handleFechaClick}
                   />
