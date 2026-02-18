@@ -1,7 +1,7 @@
 // src/pages/Productividad.jsx
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -12,6 +12,8 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { useProductividadSocket } from "../hooks/useProductividadSocket";
+
 
 import {
   Avatar,
@@ -38,17 +40,17 @@ import {
   useMediaQuery,
   useTheme,
   CircularProgress,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
-// const BACKEND_URL = "http://localhost:3001";
-const BACKEND_URL = "https://backend-1-azu0.onrender.com";
+ const BACKEND_URL = "http://localhost:3001";
+//const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
 // ✅ FUNCIONES DE FECHA CORREGIDAS
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
-
-
 
 function pasaronLas11AM() {
   const ahora = new Date();
@@ -62,8 +64,6 @@ function msHastaLas11AM() {
   const ms = objetivo.getTime() - ahora.getTime();
   return ms > 0 ? ms : 0;
 }
-
-
 
 const LABEL_PRETTY = {
   no_productivo: "No productivo",
@@ -314,6 +314,7 @@ async function obtenerDatosTerminadas(userId, fecha) {
 }
 
 export default function Productividad() {
+  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
@@ -323,6 +324,21 @@ export default function Productividad() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [toast, setToast] = useState({
+  open: false,
+  msg: "",
+  severity: "info",
+});
+
+const notify = useCallback((msg) => {
+  const text =
+    msg?.eventName === "revision_eliminada"
+      ? "Se eliminó una revisión. Actualizando..."
+      : "Hay cambios en revisiones. Actualizando...";
+
+  setToast({ open: true, msg: text, severity: "info" });
+}, []);
 
   const [, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -353,6 +369,65 @@ export default function Productividad() {
 
   const [datosTerminadasCache, setDatosTerminadasCache] = useState({});
   const [usuariosCargando, setUsuariosCargando] = useState(new Set());
+
+  const cargarRef = useRef(() => {});
+
+  const patchUsers = useCallback(async (userIds) => {
+  if (!data?.users?.length) return;
+
+  // marca “loading” por usuario si quieres (opcional)
+  setUsuariosCargando((prev) => {
+    const s = new Set(prev);
+    userIds.forEach((id) => s.add(id));
+    return s;
+  });
+
+  try {
+    const mode = mostrarTodasLasRevisiones ? "agenda" : "hecho";
+    const qs = `?date=${encodeURIComponent(fecha)}&mode=${mode}`;
+
+    const updates = await Promise.all(
+      userIds.map(async (uid) => {
+        const res = await fetch(`${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(uid)}${qs}`);
+        if (!res.ok) return null;
+        const detalle = await res.json();
+
+        // mapeo a la fila del dashboard:
+        return {
+          user_id: uid,
+          colaborador: detalle?.user?.colaborador,
+          actividades: detalle?.resumen?.actividades ?? 0,
+          revisiones: detalle?.resumen?.revisiones ?? 0,
+          revisiones_con_duracion: detalle?.resumen?.revisiones_con_duracion ?? 0,
+          revisiones_sin_duracion: detalle?.resumen?.revisiones_sin_duracion ?? 0,
+          tiempo_total: detalle?.resumen?.tiempo_total ?? 0,
+          prediccion: detalle?.prediccion ?? null,
+        };
+      })
+    );
+
+    const valid = updates.filter(Boolean);
+
+    setData((prev) => {
+      if (!prev?.users) return prev;
+
+      const byId = new Map(prev.users.map((u) => [u.user_id, u]));
+      for (const u of valid) {
+        // merge suave para no perder campos
+        byId.set(u.user_id, { ...(byId.get(u.user_id) || {}), ...u });
+      }
+
+      const users = Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0));
+      return { ...prev, users };
+    });
+  } finally {
+    setUsuariosCargando((prev) => {
+      const s = new Set(prev);
+      userIds.forEach((id) => s.delete(id));
+      return s;
+    });
+  }
+}, [data?.users, fecha, mostrarTodasLasRevisiones]);
 
   const addDaysISO = (iso, delta) => {
     const d = new Date(`${iso}T00:00:00`);
@@ -409,6 +484,7 @@ export default function Productividad() {
   // ✅ FIX: siempre mostrar lo que venga de la API principal (hoy vs hoy?date)
   const debeRestringirRevisiones = false;
 
+
   const cargar = useCallback(async () => {
     setLoading(true);
     setErr("");
@@ -430,6 +506,22 @@ export default function Productividad() {
       setLoading(false);
     }
   }, [fecha, mostrarTodasLasRevisiones]);
+
+  useProductividadSocket({
+  backendUrl: BACKEND_URL,
+  day: fecha,
+  enabled: true,
+  onDayUpdate: notify,        // toast
+  onPatchUsers: patchUsers,   // ✅ patch local
+  onRefetch: cargar,          // fallback
+  patchDebounceMs: 250,
+});
+
+
+useEffect(() => {
+  cargarRef.current = cargar;
+}, [cargar]);
+
 
   useEffect(() => {
     cargar();
@@ -993,6 +1085,22 @@ export default function Productividad() {
           </Grid>
         </Stack>
       </Container>
+      <Snackbar
+  open={toast.open}
+  autoHideDuration={2500}
+  onClose={() => setToast((p) => ({ ...p, open: false }))}
+  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+>
+  <Alert
+    onClose={() => setToast((p) => ({ ...p, open: false }))}
+    severity={toast.severity}
+    variant="filled"
+    sx={{ borderRadius: 2 }}
+  >
+    {toast.msg}
+  </Alert>
+</Snackbar>
+
     </Box>
   );
 }
