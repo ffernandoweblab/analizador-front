@@ -1,5 +1,5 @@
 // src/hooks/useProductividadSocket.js
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 export function useProductividadSocket({
@@ -7,14 +7,16 @@ export function useProductividadSocket({
   day,
   enabled = true,
 
-  onDayUpdate,     // (msg) => void  (toast, etc)
-  onPatchUsers,    // (userIds, msg) => void  (patch fino)
-  onRefetch,       // () => void  (fallback)
+  onDayUpdate,
+  onPatchUsers,
+  onRefetch,
+  onConnectionChange,
 
   patchDebounceMs = 250,
   refetchDebounceMs = 800,
 }) {
   const socketRef = useRef(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   const patchTimerRef = useRef(null);
   const refetchTimerRef = useRef(null);
@@ -22,16 +24,16 @@ export function useProductividadSocket({
   const onDayUpdateRef = useRef(onDayUpdate);
   const onPatchUsersRef = useRef(onPatchUsers);
   const onRefetchRef = useRef(onRefetch);
+  const onConnectionChangeRef = useRef(onConnectionChange);
 
   const dayRef = useRef(day);
 
-  // mantener refs actualizados
   useEffect(() => { onDayUpdateRef.current = onDayUpdate; }, [onDayUpdate]);
   useEffect(() => { onPatchUsersRef.current = onPatchUsers; }, [onPatchUsers]);
   useEffect(() => { onRefetchRef.current = onRefetch; }, [onRefetch]);
+  useEffect(() => { onConnectionChangeRef.current = onConnectionChange; }, [onConnectionChange]);
   useEffect(() => { dayRef.current = day; }, [day]);
 
-  // 1) crear socket una sola vez (mientras enabled/backendUrl existan)
   useEffect(() => {
     if (!enabled || !backendUrl) return;
 
@@ -46,8 +48,9 @@ export function useProductividadSocket({
 
     socket.on("connect", () => {
       console.log("[ui-socket] connected", socket.id);
+      setIsConnected(true);
+      onConnectionChangeRef.current?.(true);
 
-      // ✅ al conectar/reconectar, re-suscribe al día actual
       const currentDay = dayRef.current;
       if (currentDay) {
         socket.emit("subscribe_day", { day: currentDay });
@@ -57,19 +60,21 @@ export function useProductividadSocket({
 
     socket.on("connect_error", (err) => {
       console.log("[ui-socket] connect_error", err?.message || err);
+      setIsConnected(false);
+      onConnectionChangeRef.current?.(false);
     });
 
     socket.on("disconnect", (reason) => {
       console.log("[ui-socket] disconnected", reason);
+      setIsConnected(false);
+      onConnectionChangeRef.current?.(false);
     });
 
-    // ✅ handler global (una sola vez)
     const handler = (msg) => {
       if (!msg) return;
 
       onDayUpdateRef.current?.(msg);
 
-      // 2) patch fino (si el server manda userIds)
       const userIds = Array.isArray(msg.userIds) ? msg.userIds.filter(Boolean) : [];
 
       if (userIds.length > 0 && typeof onPatchUsersRef.current === "function") {
@@ -77,10 +82,9 @@ export function useProductividadSocket({
         patchTimerRef.current = setTimeout(() => {
           onPatchUsersRef.current?.(userIds, msg);
         }, patchDebounceMs);
-        return; // si parchamos, normalmente NO necesitas refetch
+        return;
       }
 
-      // 3) fallback: refetch (si no hay userIds o no hay patcher)
       if (typeof onRefetchRef.current === "function") {
         clearTimeout(refetchTimerRef.current);
         refetchTimerRef.current = setTimeout(() => {
@@ -100,22 +104,22 @@ export function useProductividadSocket({
       try { socket.off("day_update", handler); } catch {}
       try { socket.disconnect(); } catch {}
       socketRef.current = null;
+      setIsConnected(false);
     };
   }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs]);
 
-  // 2) subscribe/unsubscribe cuando cambia el day
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket || !enabled || !day) return;
 
-    // subscribe inmediato (si ya está conectado)
     console.log("[ui-socket] subscribe day", day);
     socket.emit("subscribe_day", { day });
 
     return () => {
-      // al cambiar day o desmontar
       console.log("[ui-socket] unsubscribe day", day);
       try { socket.emit("unsubscribe_day", { day }); } catch {}
     };
   }, [enabled, day]);
+
+  return { isConnected };
 }

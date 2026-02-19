@@ -4,6 +4,8 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
+import { useConnection } from "../context/ConnectionContext";
+
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
@@ -541,14 +543,15 @@ const patchUsers = useCallback(async (userIds, msg) => {
       setLoading(false);
     }
   }, [fecha, mostrarTodasLasRevisiones]);
-
+const { setConnected } = useConnection();
   useProductividadSocket({
   backendUrl: BACKEND_URL,
   day: fecha,
   enabled: true,
-  onDayUpdate: notify,        // toast
-  onPatchUsers: patchUsers,   // ✅ patch local
-  onRefetch: cargar,          // fallback
+  onDayUpdate: notify,
+  onPatchUsers: patchUsers,
+  onRefetch: cargar,
+  onConnectionChange: setConnected,
   patchDebounceMs: 250,
 });
 
