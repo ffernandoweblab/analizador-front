@@ -13,6 +13,11 @@ import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useProductividadSocket } from "../hooks/useProductividadSocket";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import LinearProgress from "@mui/material/LinearProgress";
+import Tooltip from "@mui/material/Tooltip";
 
 
 import {
@@ -41,11 +46,10 @@ import {
   useTheme,
   CircularProgress,
   Snackbar,
-  Alert,
 } from "@mui/material";
 
-
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
+//const BACKEND_URL = "http://localhost:3001";
 
 // ✅ FUNCIONES DE FECHA CORREGIDAS
 function hoyISO() {
@@ -314,7 +318,10 @@ async function obtenerDatosTerminadas(userId, fecha) {
 }
 
 export default function Productividad() {
-  
+
+
+
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
@@ -330,16 +337,11 @@ export default function Productividad() {
   msg: "",
   severity: "info",
 });
-
+const isDelete = toast.msg?.eventName === "revision_eliminada";
+const accent = isDelete ? "#f59e0b" : "#3b82f6";
 const notify = useCallback((msg) => {
-  const text =
-    msg?.eventName === "revision_eliminada"
-      ? "Se eliminó una revisión. Actualizando..."
-      : "Hay cambios en revisiones. Actualizando...";
-
-  setToast({ open: true, msg: text, severity: "info" });
+  setToast({ open: true, msg, severity: "info" });
 }, []);
-
   const [, setSearchParams] = useSearchParams();
   const location = useLocation();
 
@@ -367,87 +369,100 @@ const notify = useCallback((msg) => {
   // ✅ SWITCH DEFAULT POR HORA (solo default, respeta al usuario)
   const [userTocoSwitch, setUserTocoSwitch] = useState(false);
 
+  // ✅ AGREGA ESTO: ref siempre fresco para closures del socket/debounce
+const mostrarRef = useRef(mostrarTodasLasRevisiones);
+useEffect(() => {
+  mostrarRef.current = mostrarTodasLasRevisiones;
+}, [mostrarTodasLasRevisiones]);
+
   const [datosTerminadasCache, setDatosTerminadasCache] = useState({});
   const [usuariosCargando, setUsuariosCargando] = useState(new Set());
 
   const cargarRef = useRef(() => {});
 
-  const patchUsers = useCallback(async (userIds, msg) => {
-      console.log("[socket onPatchUsers] userIds:", userIds);
-  console.log("[socket onPatchUsers] msg:", msg); // 👈 ESTE
-     // ✅ si el backend ya mandó los datos, úsalos directo sin fetch
-  const currentMode = mostrarTodasLasRevisiones ? "agenda" : "hecho";
-const msgMode = msg?.mode; // <-- el socket DEBE mandar esto
+  const patchTimerRef = useRef(null);
+const patchAbortRef = useRef(null);
+const pendingUserIdsRef = useRef(new Set());
 
-if (msgMode && msgMode !== currentMode) return; // ✅ ignora parches del otro modo
+const patchUsers = useCallback(async (userIds, msg) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) return;
 
-if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
-  setData((prev) => {
-    if (!prev?.users) return prev;
-    const byId = new Map(prev.users.map((u) => [u.user_id, u]));
-    for (const u of msg.updatedUsers) {
-      byId.set(u.user_id, { ...(byId.get(u.user_id) || {}), ...u });
+  // acumula ids en la cola
+  userIds.forEach((id) => pendingUserIdsRef.current.add(id));
+
+  if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
+
+  patchTimerRef.current = setTimeout(async () => {
+    const ids = Array.from(pendingUserIdsRef.current);
+    pendingUserIdsRef.current.clear();
+
+    // ✅ captura el modo AQUÍ dentro, cuando el timer ejecuta (no afuera)
+    const mode = mostrarRef.current ? "agenda" : "hecho";
+
+    // ✅ filtra por modo: si el evento es de otro modo, no apliques métricas
+    if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
+      const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
+      if (mode !== modoEvento) return; // modo incorrecto, ignorar
     }
-    const users = Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0));
-    return { ...prev, users };
-  });
-  return;
-}
-  if (!data?.users?.length) return;
 
-  // marca “loading” por usuario si quieres (opcional)
-  setUsuariosCargando((prev) => {
-    const s = new Set(prev);
-    userIds.forEach((id) => s.add(id));
-    return s;
-  });
+    if (patchAbortRef.current) patchAbortRef.current.abort();
+    const controller = new AbortController();
+    patchAbortRef.current = controller;
 
-  try {
-    const mode = mostrarTodasLasRevisiones ? "agenda" : "hecho";
-    const qs = `?date=${encodeURIComponent(fecha)}&mode=${mode}`;
-
-    const updates = await Promise.all(
-      userIds.map(async (uid) => {
-        const res = await fetch(`${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(uid)}${qs}`);
-        if (!res.ok) return null;
-        const detalle = await res.json();
-
-        // mapeo a la fila del dashboard:
-        return {
-          user_id: uid,
-          colaborador: detalle?.user?.colaborador,
-          actividades: detalle?.resumen?.actividades ?? 0,
-          revisiones: detalle?.resumen?.revisiones ?? 0,
-          revisiones_con_duracion: detalle?.resumen?.revisiones_con_duracion ?? 0,
-          revisiones_sin_duracion: detalle?.resumen?.revisiones_sin_duracion ?? 0,
-          tiempo_total: detalle?.resumen?.tiempo_total ?? 0,
-          prediccion: detalle?.prediccion ?? null,
-        };
-      })
-    );
-
-    const valid = updates.filter(Boolean);
-
-    setData((prev) => {
-      if (!prev?.users) return prev;
-
-      const byId = new Map(prev.users.map((u) => [u.user_id, u]));
-      for (const u of valid) {
-        // merge suave para no perder campos
-        byId.set(u.user_id, { ...(byId.get(u.user_id) || {}), ...u });
-      }
-
-      const users = Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0));
-      return { ...prev, users };
-    });
-  } finally {
     setUsuariosCargando((prev) => {
       const s = new Set(prev);
-      userIds.forEach((id) => s.delete(id));
+      ids.forEach((id) => s.add(id));
       return s;
     });
-  }
-}, [data?.users, fecha, mostrarTodasLasRevisiones]);
+
+    try {
+      const qs = `?date=${encodeURIComponent(fecha)}&mode=${mode}`;
+
+      const updates = await Promise.all(
+        ids.map(async (uid) => {
+          const res = await fetch(
+            `${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(uid)}${qs}`,
+            { signal: controller.signal }
+          );
+          if (!res.ok) return null;
+          const detalle = await res.json();
+          return {
+            user_id: uid,
+            colaborador: detalle?.user?.colaborador,
+            actividades: detalle?.resumen?.actividades ?? 0,
+            revisiones: detalle?.resumen?.revisiones ?? 0,
+            revisiones_con_duracion: detalle?.resumen?.revisiones_con_duracion ?? 0,
+            revisiones_sin_duracion: detalle?.resumen?.revisiones_sin_duracion ?? 0,
+            tiempo_total: detalle?.resumen?.tiempo_total ?? 0,
+            prediccion: detalle?.prediccion ?? null,
+          };
+        })
+      );
+
+      const valid = updates.filter(Boolean);
+      setData((prev) => {
+        if (!prev?.users) return prev;
+        const byId = new Map(prev.users.map((u) => [u.user_id, u]));
+        for (const u of valid) {
+          byId.set(u.user_id, { ...(byId.get(u.user_id) || {}), ...u });
+        }
+        return {
+          ...prev,
+          users: Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0)),
+        };
+      });
+    } catch (e) {
+      if (e?.name !== "AbortError") console.error("patchUsers fetch error:", e);
+    } finally {
+      setUsuariosCargando((prev) => {
+        const s = new Set(prev);
+        ids.forEach((id) => s.delete(id));
+        return s;
+      });
+    }
+  }, 0); // ✅ sin debounce aquí, el hook ya lo hace
+}, [fecha]);
+
 
   const addDaysISO = (iso, delta) => {
     const d = new Date(`${iso}T00:00:00`);
@@ -763,6 +778,7 @@ useEffect(() => {
                       onChange={() => {
                         setUserTocoSwitch(true);
                         setMostrarTodasLasRevisiones((prev) => !prev);
+                        setData(null);
                       }}
                       sx={{
                         "& .MuiSwitch-switchBase.Mui-checked": {
@@ -1105,20 +1121,176 @@ useEffect(() => {
           </Grid>
         </Stack>
       </Container>
-      <Snackbar
+    <Snackbar
   open={toast.open}
-  autoHideDuration={2500}
+  autoHideDuration={4000}
   onClose={() => setToast((p) => ({ ...p, open: false }))}
   anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
 >
-  <Alert
-    onClose={() => setToast((p) => ({ ...p, open: false }))}
-    severity={toast.severity}
-    variant="filled"
-    sx={{ borderRadius: 2 }}
+  <Box
+    sx={{
+      position: "relative",
+      minWidth: 300,
+      maxWidth: 420,
+      borderRadius: 3,
+      overflow: "hidden",
+      border: "1px solid",
+      borderColor: alpha("#fff", 0.08),
+      bgcolor: alpha("#0b1220", 0.78),
+      backdropFilter: "blur(10px)",
+      boxShadow: "0 18px 60px rgba(0,0,0,.55)",
+    }}
   >
-    {toast.msg}
-  </Alert>
+    {/* Acento izquierdo */}
+    <Box
+      sx={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 4,
+        bgcolor: accent,
+      }}
+    />
+
+    {/* Barra de progreso sutil arriba */}
+    <LinearProgress
+      variant="determinate"
+      value={100}
+      sx={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: "100%",
+        height: 3,
+        opacity: 0.6,
+        bgcolor: alpha("#fff", 0.08),
+        "& .MuiLinearProgress-bar": { bgcolor: alpha(accent, 0.9) },
+      }}
+    />
+
+    <Stack direction="row" spacing={1.5} sx={{ p: 2, pl: 2.2 }} alignItems="flex-start">
+      {/* Icono */}
+      <Box
+        sx={{
+          width: 38,
+          height: 38,
+          borderRadius: 2,
+          flexShrink: 0,
+          display: "grid",
+          placeItems: "center",
+          bgcolor: alpha(accent, 0.14),
+          border: "1px solid",
+          borderColor: alpha(accent, 0.25),
+        }}
+      >
+        {isDelete ? (
+          <DeleteOutlineRoundedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
+        ) : (
+          <EditOutlinedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
+        )}
+      </Box>
+
+      {/* Texto */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {/* Header: etiqueta + cerrar */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.6 }}>
+          <Box
+            sx={{
+              px: 1,
+              py: 0.4,
+              borderRadius: 99,
+              bgcolor: alpha(accent, 0.14),
+              border: "1px solid",
+              borderColor: alpha(accent, 0.25),
+            }}
+          >
+            <Typography
+              sx={{
+                color: alpha(accent, 0.95),
+                fontWeight: 900,
+                fontSize: 11,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                lineHeight: 1,
+              }}
+            >
+              {isDelete ? "Revisión eliminada" : "Revisión actualizada"}
+            </Typography>
+          </Box>
+
+          <IconButton
+            size="small"
+            onClick={() => setToast((p) => ({ ...p, open: false }))}
+            sx={{
+              color: alpha("#fff", 0.35),
+              mt: -0.8,
+              mr: -0.8,
+              "&:hover": { color: alpha("#fff", 0.9), bgcolor: alpha("#fff", 0.08) },
+            }}
+          >
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        {/* Actividad (2 líneas) */}
+        {toast.msg?.revisionInfo?.nombreActividad && (
+          <Typography
+            sx={{
+              color: alpha("#fff", 0.92),
+              fontWeight: 800,
+              fontSize: 14,
+              lineHeight: 1.2,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              mb: 0.35,
+            }}
+          >
+            {toast.msg.revisionInfo.nombreActividad}
+          </Typography>
+        )}
+
+        {/* Revisión (1 línea + tooltip) */}
+        {toast.msg?.revisionInfo?.nombreRevision && (
+          <Tooltip title={toast.msg.revisionInfo.nombreRevision} arrow>
+            <Typography
+              noWrap
+              sx={{
+                color: alpha("#fff", 0.68),
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {toast.msg.revisionInfo.nombreRevision}
+            </Typography>
+          </Tooltip>
+        )}
+
+        {/* Hora */}
+        {toast.msg?.revisionInfo?.horario && (
+          <Stack direction="row" spacing={0.6} alignItems="center" sx={{ mt: 0.9 }}>
+            <AccessTimeOutlinedIcon sx={{ fontSize: 14, color: alpha("#fff", 0.35) }} />
+            <Typography sx={{ color: alpha("#fff", 0.42), fontSize: 11, fontWeight: 600 }}>
+              {(() => {
+                try {
+                  return new Date(toast.msg.revisionInfo.horario).toLocaleTimeString("es-MX", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "America/Mexico_City",
+                  });
+                } catch {
+                  return "";
+                }
+              })()}
+            </Typography>
+          </Stack>
+        )}
+      </Box>
+    </Stack>
+  </Box>
 </Snackbar>
 
     </Box>
