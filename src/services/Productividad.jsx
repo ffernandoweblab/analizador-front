@@ -44,7 +44,7 @@ import {
   Alert,
 } from "@mui/material";
 
-//  const BACKEND_URL = "http://localhost:3001";
+
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
 // ✅ FUNCIONES DE FECHA CORREGIDAS
@@ -372,7 +372,27 @@ const notify = useCallback((msg) => {
 
   const cargarRef = useRef(() => {});
 
-  const patchUsers = useCallback(async (userIds) => {
+  const patchUsers = useCallback(async (userIds, msg) => {
+      console.log("[socket onPatchUsers] userIds:", userIds);
+  console.log("[socket onPatchUsers] msg:", msg); // 👈 ESTE
+     // ✅ si el backend ya mandó los datos, úsalos directo sin fetch
+  const currentMode = mostrarTodasLasRevisiones ? "agenda" : "hecho";
+const msgMode = msg?.mode; // <-- el socket DEBE mandar esto
+
+if (msgMode && msgMode !== currentMode) return; // ✅ ignora parches del otro modo
+
+if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
+  setData((prev) => {
+    if (!prev?.users) return prev;
+    const byId = new Map(prev.users.map((u) => [u.user_id, u]));
+    for (const u of msg.updatedUsers) {
+      byId.set(u.user_id, { ...(byId.get(u.user_id) || {}), ...u });
+    }
+    const users = Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0));
+    return { ...prev, users };
+  });
+  return;
+}
   if (!data?.users?.length) return;
 
   // marca “loading” por usuario si quieres (opcional)
