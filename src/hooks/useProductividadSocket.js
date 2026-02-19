@@ -1,5 +1,5 @@
 // src/hooks/useProductividadSocket.js
-import { useEffect, useRef,  useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
 
 export function useProductividadSocket({
@@ -31,17 +31,23 @@ export function useProductividadSocket({
   useEffect(() => { onPatchUsersRef.current = onPatchUsers; }, [onPatchUsers]);
   useEffect(() => { onRefetchRef.current = onRefetch; }, [onRefetch]);
   useEffect(() => { onConnectionChangeRef.current = onConnectionChange; }, [onConnectionChange]);
-  useEffect(() => { dayRef.current = day; }, [day]);
-
-  // Notifica el cambio de conexion siempre con el ref mas fresco
-  const notifyConnection = useCallback((value) => {
-    if (!mountedRef.current) return;
-    onConnectionChangeRef.current?.(value);
-  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    dayRef.current = day;
+    const socket = socketRef.current;
+    if (!socket || !socket.connected || !day) return;
+    socket.emit("subscribe_day", { day });
+    console.log("[ui-socket] subscribe day (day change)", day);
+  }, [day]);
+
+  const notifyConnection = useCallback((value) => {
+    if (!mountedRef.current) return;
+    onConnectionChangeRef.current?.(value);
   }, []);
 
   useEffect(() => {
@@ -63,7 +69,7 @@ export function useProductividadSocket({
       const currentDay = dayRef.current;
       if (currentDay) {
         socket.emit("subscribe_day", { day: currentDay });
-        console.log("[ui-socket] re-subscribe day", currentDay);
+        console.log("[ui-socket] subscribe day (connect)", currentDay);
       }
     });
 
@@ -102,11 +108,6 @@ export function useProductividadSocket({
 
     socket.on("day_update", handler);
 
-    // Verifica si ya estaba conectado al montar (reconexion rapida)
-    if (socket.connected) {
-      notifyConnection(true);
-    }
-
     return () => {
       clearTimeout(patchTimerRef.current);
       clearTimeout(refetchTimerRef.current);
@@ -119,17 +120,4 @@ export function useProductividadSocket({
       notifyConnection(false);
     };
   }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs, notifyConnection]);
-
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket || !enabled || !day) return;
-
-    console.log("[ui-socket] subscribe day", day);
-    socket.emit("subscribe_day", { day });
-
-    return () => {
-      console.log("[ui-socket] unsubscribe day", day);
-      try { socket.emit("unsubscribe_day", { day }); } catch {}
-    };
-  }, [enabled, day]);
 }
