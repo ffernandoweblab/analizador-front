@@ -1,5 +1,5 @@
 // src/hooks/useProductividadSocket.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
 export function useProductividadSocket({
@@ -16,7 +16,7 @@ export function useProductividadSocket({
   refetchDebounceMs = 800,
 }) {
   const socketRef = useRef(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const mountedRef = useRef(true);
 
   const patchTimerRef = useRef(null);
   const refetchTimerRef = useRef(null);
@@ -25,7 +25,6 @@ export function useProductividadSocket({
   const onPatchUsersRef = useRef(onPatchUsers);
   const onRefetchRef = useRef(onRefetch);
   const onConnectionChangeRef = useRef(onConnectionChange);
-
   const dayRef = useRef(day);
 
   useEffect(() => { onDayUpdateRef.current = onDayUpdate; }, [onDayUpdate]);
@@ -33,6 +32,17 @@ export function useProductividadSocket({
   useEffect(() => { onRefetchRef.current = onRefetch; }, [onRefetch]);
   useEffect(() => { onConnectionChangeRef.current = onConnectionChange; }, [onConnectionChange]);
   useEffect(() => { dayRef.current = day; }, [day]);
+
+  // Notifica el cambio de conexion siempre con el ref mas fresco
+  const notifyConnection = useCallback((value) => {
+    if (!mountedRef.current) return;
+    onConnectionChangeRef.current?.(value);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!enabled || !backendUrl) return;
@@ -48,8 +58,7 @@ export function useProductividadSocket({
 
     socket.on("connect", () => {
       console.log("[ui-socket] connected", socket.id);
-      setIsConnected(true);
-      onConnectionChangeRef.current?.(true);
+      notifyConnection(true);
 
       const currentDay = dayRef.current;
       if (currentDay) {
@@ -60,14 +69,12 @@ export function useProductividadSocket({
 
     socket.on("connect_error", (err) => {
       console.log("[ui-socket] connect_error", err?.message || err);
-      setIsConnected(false);
-      onConnectionChangeRef.current?.(false);
+      notifyConnection(false);
     });
 
     socket.on("disconnect", (reason) => {
       console.log("[ui-socket] disconnected", reason);
-      setIsConnected(false);
-      onConnectionChangeRef.current?.(false);
+      notifyConnection(false);
     });
 
     const handler = (msg) => {
@@ -95,6 +102,11 @@ export function useProductividadSocket({
 
     socket.on("day_update", handler);
 
+    // Verifica si ya estaba conectado al montar (reconexion rapida)
+    if (socket.connected) {
+      notifyConnection(true);
+    }
+
     return () => {
       clearTimeout(patchTimerRef.current);
       clearTimeout(refetchTimerRef.current);
@@ -104,9 +116,9 @@ export function useProductividadSocket({
       try { socket.off("day_update", handler); } catch {}
       try { socket.disconnect(); } catch {}
       socketRef.current = null;
-      setIsConnected(false);
+      notifyConnection(false);
     };
-  }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs]);
+  }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs, notifyConnection]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -120,6 +132,4 @@ export function useProductividadSocket({
       try { socket.emit("unsubscribe_day", { day }); } catch {}
     };
   }, [enabled, day]);
-
-  return { isConnected };
 }
