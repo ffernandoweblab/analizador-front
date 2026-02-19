@@ -112,11 +112,9 @@ export function useProductividadSocket({
       clearTimeout(refetchTimerRef.current);
       patchTimerRef.current = null;
       refetchTimerRef.current = null;
-
       try { socket.off("day_update", handler); } catch {}
       try { socket.disconnect(); } catch {}
       socketRef.current = null;
-      
       notifyConnection(false);
     };
   }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs, notifyConnection]);
