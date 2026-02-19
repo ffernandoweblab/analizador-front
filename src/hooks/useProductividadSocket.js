@@ -116,6 +116,7 @@ export function useProductividadSocket({
       try { socket.off("day_update", handler); } catch {}
       try { socket.disconnect(); } catch {}
       socketRef.current = null;
+      
       notifyConnection(false);
     };
   }, [enabled, backendUrl, patchDebounceMs, refetchDebounceMs, notifyConnection]);
