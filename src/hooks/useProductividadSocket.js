@@ -1,5 +1,5 @@
 // src/hooks/useProductividadSocket.js
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef,  useCallback } from "react";
 import { io } from "socket.io-client";
 
 export function useProductividadSocket({
