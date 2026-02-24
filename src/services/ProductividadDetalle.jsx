@@ -36,9 +36,9 @@ import { FormControlLabel, Switch, Tooltip } from "@mui/material";
 
 
 
-//const BACKEND_URL_DETAIL = "http://localhost:3001";
+const BACKEND_URL_DETAIL = "http://localhost:3001";
 
-const BACKEND_URL_DETAIL = "https://backend-1-azu0.onrender.com";
+//const BACKEND_URL_DETAIL = "https://backend-1-azu0.onrender.com";
 
 const LABEL_COLORS = {
   productivo: {

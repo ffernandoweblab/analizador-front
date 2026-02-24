@@ -230,47 +230,20 @@ function LoadingCard() {
   );
 }
 
-function StatCard({ icon: Icon, value, label, color = "primary", loading = false }) {
-  const colorMap = {
-    primary: "#3b82f6",
-    success: "#10b981",
-    warning: "#f59e0b",
-    error: "#ef4444",
-  };
+function StatCard({ icon: Icon, value, total, label, color = "primary", loading = false }) {
+  const colorMap = { primary: "#3b82f6", success: "#10b981", warning: "#f59e0b", error: "#ef4444" };
+
+  const displayValue = total != null
+    ? <>{value}<Typography component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>/{total}</Typography></>
+    : value;
 
   return (
-    <Box
-      sx={{
-        p: { xs: 1.5, sm: 2 },
-        borderRadius: 2,
-        bgcolor: alpha(colorMap[color], 0.08),
-        border: "1px solid",
-        borderColor: alpha(colorMap[color], 0.2),
-        textAlign: "center",
-        transition: "all 0.3s ease",
-        "&:hover": {
-          bgcolor: alpha(colorMap[color], 0.12),
-          transform: "translateY(-2px)",
-        },
-      }}
-    >
+    <Box sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: alpha(colorMap[color], 0.08), border: "1px solid", borderColor: alpha(colorMap[color], 0.2), textAlign: "center", transition: "all 0.3s ease", "&:hover": { bgcolor: alpha(colorMap[color], 0.12), transform: "translateY(-2px)" } }}>
       <Icon sx={{ fontSize: { xs: 24, sm: 28 }, color: colorMap[color], mb: 1 }} />
-      <Typography
-        variant="h5"
-        fontWeight={900}
-        sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 18, sm: 22 } }}
-      >
-        {loading ? <CircularProgress size={20} sx={{ color: colorMap[color] }} /> : value}
+      <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 18, sm: 22 } }}>
+        {loading ? <CircularProgress size={20} sx={{ color: colorMap[color] }} /> : displayValue}
       </Typography>
-      <Typography
-        variant="caption"
-        sx={{
-          color: "text.secondary",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          fontSize: { xs: 10, sm: 12 },
-        }}
-      >
+      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, fontSize: { xs: 10, sm: 12 } }}>
         {label}
       </Typography>
     </Box>
@@ -333,17 +306,18 @@ export default function Productividad() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [datosAgendaCache, setDatosAgendaCache] = useState({}); // { userId: { actividades, revisiones, tiempo } }
 
   const [toast, setToast] = useState({
-  open: false,
-  msg: "",
-  severity: "info",
-});
-const isDelete = toast.msg?.eventName === "revision_eliminada";
-const accent = isDelete ? "#f59e0b" : "#3b82f6";
-const notify = useCallback((msg) => {
-  setToast({ open: true, msg, severity: "info" });
-}, []);
+    open: false,
+    msg: "",
+    severity: "info",
+  });
+  const isDelete = toast.msg?.eventName === "revision_eliminada";
+  const accent = isDelete ? "#f59e0b" : "#3b82f6";
+  const notify = useCallback((msg) => {
+    setToast({ open: true, msg, severity: "info" });
+  }, []);
   const [, setSearchParams] = useSearchParams();
   const location = useLocation();
 
@@ -372,39 +346,33 @@ const notify = useCallback((msg) => {
   const [userTocoSwitch, setUserTocoSwitch] = useState(false);
 
   // ✅ AGREGA ESTO: ref siempre fresco para closures del socket/debounce
-const mostrarRef = useRef(mostrarTodasLasRevisiones);
-useEffect(() => {
-  mostrarRef.current = mostrarTodasLasRevisiones;
-}, [mostrarTodasLasRevisiones]);
+  const mostrarRef = useRef(mostrarTodasLasRevisiones);
+  useEffect(() => {
+    mostrarRef.current = mostrarTodasLasRevisiones;
+  }, [mostrarTodasLasRevisiones]);
 
+  // ✅ NUEVO
+  const fechaRef = useRef(fecha);
+  useEffect(() => {
+    fechaRef.current = fecha;
+  }, [fecha]);
   const [datosTerminadasCache, setDatosTerminadasCache] = useState({});
   const [usuariosCargando, setUsuariosCargando] = useState(new Set());
 
-  const cargarRef = useRef(() => {});
+  const cargarRef = useRef(() => { });
 
-  const patchTimerRef = useRef(null);
-const patchAbortRef = useRef(null);
-const pendingUserIdsRef = useRef(new Set());
+  const patchAbortRef = useRef(null);
 
-const patchUsers = useCallback(async (userIds, msg) => {
-  if (!Array.isArray(userIds) || userIds.length === 0) return;
 
-  // acumula ids en la cola
-  userIds.forEach((id) => pendingUserIdsRef.current.add(id));
+  const patchUsers = useCallback(async (userIds, msg) => {
+    if (!Array.isArray(userIds) || userIds.length === 0) return;
 
-  if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
-
-  patchTimerRef.current = setTimeout(async () => {
-    const ids = Array.from(pendingUserIdsRef.current);
-    pendingUserIdsRef.current.clear();
-
-    // ✅ captura el modo AQUÍ dentro, cuando el timer ejecuta (no afuera)
     const mode = mostrarRef.current ? "agenda" : "hecho";
 
-    // ✅ filtra por modo: si el evento es de otro modo, no apliques métricas
+    // filtra por modo
     if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
       const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
-      if (mode !== modoEvento) return; // modo incorrecto, ignorar
+      if (mode !== modoEvento) return;
     }
 
     if (patchAbortRef.current) patchAbortRef.current.abort();
@@ -413,15 +381,16 @@ const patchUsers = useCallback(async (userIds, msg) => {
 
     setUsuariosCargando((prev) => {
       const s = new Set(prev);
-      ids.forEach((id) => s.add(id));
+      userIds.forEach((id) => s.add(id));
       return s;
     });
 
     try {
-      const qs = `?date=${encodeURIComponent(fecha)}&mode=${mode}`;
+      const fechaActual = fechaRef.current;
+      const qs = `?date=${encodeURIComponent(fechaActual)}&mode=${mode}`;
 
       const updates = await Promise.all(
-        ids.map(async (uid) => {
+        userIds.map(async (uid) => {
           const res = await fetch(
             `${BACKEND_URL}/api/productividad/usuario/${encodeURIComponent(uid)}${qs}`,
             { signal: controller.signal }
@@ -442,6 +411,7 @@ const patchUsers = useCallback(async (userIds, msg) => {
       );
 
       const valid = updates.filter(Boolean);
+
       setData((prev) => {
         if (!prev?.users) return prev;
         const byId = new Map(prev.users.map((u) => [u.user_id, u]));
@@ -453,17 +423,32 @@ const patchUsers = useCallback(async (userIds, msg) => {
           users: Array.from(byId.values()).sort((a, b) => (b.tiempo_total || 0) - (a.tiempo_total || 0)),
         };
       });
+
+      // actualiza denominador si estamos en agenda
+      if (mode === "agenda") {
+        setDatosAgendaCache((prev) => {
+          const next = { ...prev };
+          for (const u of valid) {
+            next[u.user_id] = {
+              actividades: u.actividades ?? 0,
+              revisiones: u.revisiones ?? 0,
+              tiempo: u.tiempo_total ?? 0,
+            };
+          }
+          return next;
+        });
+      }
+
     } catch (e) {
       if (e?.name !== "AbortError") console.error("patchUsers fetch error:", e);
     } finally {
       setUsuariosCargando((prev) => {
         const s = new Set(prev);
-        ids.forEach((id) => s.delete(id));
+        userIds.forEach((id) => s.delete(id));
         return s;
       });
     }
-  }, 0); // ✅ sin debounce aquí, el hook ya lo hace
-}, [fecha]);
+  }, []); // sin dependencias, usa refs
 
 
   const addDaysISO = (iso, delta) => {
@@ -472,22 +457,19 @@ const patchUsers = useCallback(async (userIds, msg) => {
     return d.toISOString().slice(0, 10);
   };
 
-  const setFechaAndUrl = (next) => {
-    setFecha(next);
-    if (!next || next === today) {
-      setSearchParams({}, { replace: true });
-    } else {
-      setSearchParams({ date: next }, { replace: true });
-    }
-
-    // ✅ SWITCH DEFAULT POR HORA: al cambiar fecha, vuelve a default
-    setUserTocoSwitch(false);
-
-    // Default a modo "real" al cambiar fecha (mantengo tu comportamiento)
-    setMostrarTodasLasRevisiones(false);
-    setDatosTerminadasCache({});
-    setUsuariosCargando(new Set());
-  };
+const setFechaAndUrl = (next) => {
+  setFecha(next);
+  if (!next || next === today) {
+    setSearchParams({}, { replace: true });
+  } else {
+    setSearchParams({ date: next }, { replace: true });
+  }
+  setUserTocoSwitch(false);
+  setMostrarTodasLasRevisiones(false);
+  setDatosTerminadasCache({});
+  setDatosAgendaCache({});       // ← limpia al cambiar fecha
+  setUsuariosCargando(new Set());
+};
 
   // ✅ SWITCH DEFAULT POR HORA:
   // - Hoy + antes de 11 => ON por default
@@ -522,44 +504,87 @@ const patchUsers = useCallback(async (userIds, msg) => {
   const debeRestringirRevisiones = false;
 
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
-    setErr("");
-    try {
-      const url = mostrarTodasLasRevisiones
-        ? `${BACKEND_URL}/api/productividad/hoy`
-        : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
-
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const newData = await res.json();
-      setData(newData);
-
-      setDatosTerminadasCache({});
-      setUsuariosCargando(new Set());
-    } catch (e) {
-      setErr(e?.message || String(e));
-    } finally {
-      setLoading(false);
+  // Siempre carga agenda en background para tener denominadores frescos
+const cargarAgendaBackground = useCallback(async () => {
+  if (!esHoy) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/productividad/hoy`);
+    if (!res.ok) return;
+    const agendaData = await res.json();
+    if (!agendaData?.users) return;
+    const cache = {};
+    for (const u of agendaData.users) {
+      cache[u.user_id] = {
+        actividades: Number(u.actividades ?? 0),
+        revisiones: Number(u.revisiones ?? 0),
+        tiempo: Number(u.tiempo_total ?? 0),
+      };
     }
-  }, [fecha, mostrarTodasLasRevisiones]);
-const { setConnected } = useConnection();
+    setDatosAgendaCache(cache);
+  } catch (e) {
+    console.error("cargarAgendaBackground error:", e);
+  }
+}, [esHoy]); // ← esHoy es suficiente, no necesita más deps
+
+const cargar = useCallback(async () => {
+  setLoading(true);
+  setErr("");
+  try {
+    const url = mostrarTodasLasRevisiones
+      ? `${BACKEND_URL}/api/productividad/hoy`
+      : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(await res.text());
+    const newData = await res.json();
+    setData(newData);
+
+    // Si estamos en agenda, el data ES el denominador — actualiza cache
+    if (mostrarTodasLasRevisiones && newData?.users) {
+      const cache = {};
+      for (const u of newData.users) {
+        cache[u.user_id] = {
+          actividades: Number(u.actividades ?? 0),
+          revisiones: Number(u.revisiones ?? 0),
+          tiempo: Number(u.tiempo_total ?? 0),
+        };
+      }
+      setDatosAgendaCache(cache);
+    }
+
+    setDatosTerminadasCache({});
+    setUsuariosCargando(new Set());
+  } catch (e) {
+    setErr(e?.message || String(e));
+  } finally {
+    setLoading(false);
+  }
+}, [fecha, mostrarTodasLasRevisiones]);
+  const onRefetchStable = useCallback((...args) => {
+    cargarRef.current?.(...args);
+  }, []);
+
+  const { setConnected } = useConnection();
   useProductividadSocket({
-  backendUrl: BACKEND_URL,
-  day: fecha,
-  enabled: true,
-  onDayUpdate: notify,
-  onPatchUsers: patchUsers,
-  onRefetch: cargar,
-  onConnectionChange: setConnected,
-  patchDebounceMs: 250,
-});
+    backendUrl: BACKEND_URL,
+    day: fecha,
+    enabled: true,
+    onDayUpdate: notify,
+    onPatchUsers: patchUsers,
+    onRefetch: onRefetchStable,  // ← siempre estable
+    onConnectionChange: setConnected,
+    patchDebounceMs: 250,
+  });
 
 
+  useEffect(() => {
+    cargarRef.current = cargar;
+  }, [cargar]);
+
+// Y este useEffect dispara la recarga siempre que cambie el modo O la fecha:
 useEffect(() => {
-  cargarRef.current = cargar;
-}, [cargar]);
-
+  cargarAgendaBackground();
+}, [cargarAgendaBackground, mostrarTodasLasRevisiones]); // ← agrega mostrarTodasLasRevisiones
 
   useEffect(() => {
     cargar();
@@ -782,6 +807,9 @@ useEffect(() => {
                         setUserTocoSwitch(true);
                         setMostrarTodasLasRevisiones((prev) => !prev);
                         setData(null);
+                        
+                        setDatosTerminadasCache({});
+                        setUsuariosCargando(new Set());
                       }}
                       sx={{
                         "& .MuiSwitch-switchBase.Mui-checked": {
@@ -964,6 +992,17 @@ useEffect(() => {
                 const mostrarRestringido = debeRestringirRevisiones;
 
                 const actividadesAMostrar = mostrarRestringido ? (datosTerminadas?.actividades ?? 0) : datosOriginales.actividades;
+                const agendaRef = datosAgendaCache[u.user_id]; // denominador (agenda)
+
+                // En modo hecho: numerador=hecho, denominador=agenda
+                // En modo agenda: sin fracción
+                // En modo hecho: numerador=hecho, denominador=agenda
+                // SOLO para HOY. Para días anteriores: sin fracción (normal).
+                const mostrarFraccion = esHoy && !mostrarTodasLasRevisiones && !!agendaRef;
+
+                const totalActividades = mostrarFraccion ? agendaRef.actividades : undefined;
+                const totalRevisiones = mostrarFraccion ? agendaRef.revisiones : undefined;
+                const totalTiempo = mostrarFraccion ? formatearTiempo(agendaRef.tiempo) : undefined;
                 const revisionesAMostrar = mostrarRestringido ? (datosTerminadas?.revisiones ?? 0) : datosOriginales.revisiones;
                 const tiempoAMostrar = mostrarRestringido ? (datosTerminadas?.tiempo ?? 0) : datosOriginales.tiempo;
 
@@ -1056,31 +1095,13 @@ useEffect(() => {
 
                             <Grid container spacing={1.5}>
                               <Grid item xs={12} sm={4}>
-                                <StatCard
-                                  icon={ChecklistOutlinedIcon}
-                                  value={actividadesAMostrar}
-                                  label="Actividades"
-                                  color="primary"
-                                  loading={estaCargando && mostrarRestringido}
-                                />
+                                <StatCard icon={ChecklistOutlinedIcon} value={actividadesAMostrar} total={totalActividades} label="Actividades" color="primary" loading={estaCargando && mostrarRestringido} />
                               </Grid>
                               <Grid item xs={12} sm={4}>
-                                <StatCard
-                                  icon={AssignmentTurnedInOutlinedIcon}
-                                  value={revisionesAMostrar}
-                                  label={labelRevisiones}
-                                  color="success"
-                                  loading={estaCargando && mostrarRestringido}
-                                />
+                                <StatCard icon={AssignmentTurnedInOutlinedIcon} value={revisionesAMostrar} total={totalRevisiones} label={labelRevisiones} color="success" loading={estaCargando && mostrarRestringido} />
                               </Grid>
                               <Grid item xs={12} sm={4}>
-                                <StatCard
-                                  icon={AccessTimeOutlinedIcon}
-                                  value={formatearTiempo(tiempoAMostrar)}
-                                  label="Tiempo"
-                                  color="warning"
-                                  loading={estaCargando && mostrarRestringido}
-                                />
+                                <StatCard icon={AccessTimeOutlinedIcon} value={formatearTiempo(tiempoAMostrar)} total={totalTiempo} label="Tiempo" color="warning" loading={estaCargando && mostrarRestringido} />
                               </Grid>
                             </Grid>
 
@@ -1124,177 +1145,177 @@ useEffect(() => {
           </Grid>
         </Stack>
       </Container>
-    <Snackbar
-  open={toast.open}
-  autoHideDuration={4000}
-  onClose={() => setToast((p) => ({ ...p, open: false }))}
-  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
->
-  <Box
-    sx={{
-      position: "relative",
-      minWidth: 300,
-      maxWidth: 420,
-      borderRadius: 3,
-      overflow: "hidden",
-      border: "1px solid",
-      borderColor: alpha("#fff", 0.08),
-      bgcolor: alpha("#0b1220", 0.78),
-      backdropFilter: "blur(10px)",
-      boxShadow: "0 18px 60px rgba(0,0,0,.55)",
-    }}
-  >
-    {/* Acento izquierdo */}
-    <Box
-      sx={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 4,
-        bgcolor: accent,
-      }}
-    />
-
-    {/* Barra de progreso sutil arriba */}
-    <LinearProgress
-      variant="determinate"
-      value={100}
-      sx={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        width: "100%",
-        height: 3,
-        opacity: 0.6,
-        bgcolor: alpha("#fff", 0.08),
-        "& .MuiLinearProgress-bar": { bgcolor: alpha(accent, 0.9) },
-      }}
-    />
-
-    <Stack direction="row" spacing={1.5} sx={{ p: 2, pl: 2.2 }} alignItems="flex-start">
-      {/* Icono */}
-      <Box
-        sx={{
-          width: 38,
-          height: 38,
-          borderRadius: 2,
-          flexShrink: 0,
-          display: "grid",
-          placeItems: "center",
-          bgcolor: alpha(accent, 0.14),
-          border: "1px solid",
-          borderColor: alpha(accent, 0.25),
-        }}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast((p) => ({ ...p, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        {isDelete ? (
-          <DeleteOutlineRoundedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
-        ) : (
-          <EditOutlinedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
-        )}
-      </Box>
-
-      {/* Texto */}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        {/* Header: etiqueta + cerrar */}
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.6 }}>
+        <Box
+          sx={{
+            position: "relative",
+            minWidth: 300,
+            maxWidth: 420,
+            borderRadius: 3,
+            overflow: "hidden",
+            border: "1px solid",
+            borderColor: alpha("#fff", 0.08),
+            bgcolor: alpha("#0b1220", 0.78),
+            backdropFilter: "blur(10px)",
+            boxShadow: "0 18px 60px rgba(0,0,0,.55)",
+          }}
+        >
+          {/* Acento izquierdo */}
           <Box
             sx={{
-              px: 1,
-              py: 0.4,
-              borderRadius: 99,
-              bgcolor: alpha(accent, 0.14),
-              border: "1px solid",
-              borderColor: alpha(accent, 0.25),
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              bgcolor: accent,
             }}
-          >
-            <Typography
+          />
+
+          {/* Barra de progreso sutil arriba */}
+          <LinearProgress
+            variant="determinate"
+            value={100}
+            sx={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: "100%",
+              height: 3,
+              opacity: 0.6,
+              bgcolor: alpha("#fff", 0.08),
+              "& .MuiLinearProgress-bar": { bgcolor: alpha(accent, 0.9) },
+            }}
+          />
+
+          <Stack direction="row" spacing={1.5} sx={{ p: 2, pl: 2.2 }} alignItems="flex-start">
+            {/* Icono */}
+            <Box
               sx={{
-                color: alpha(accent, 0.95),
-                fontWeight: 900,
-                fontSize: 11,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                lineHeight: 1,
+                width: 38,
+                height: 38,
+                borderRadius: 2,
+                flexShrink: 0,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: alpha(accent, 0.14),
+                border: "1px solid",
+                borderColor: alpha(accent, 0.25),
               }}
             >
-              {isDelete ? "Revisión eliminada" : "Revisión actualizada"}
-            </Typography>
-          </Box>
+              {isDelete ? (
+                <DeleteOutlineRoundedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
+              ) : (
+                <EditOutlinedIcon sx={{ fontSize: 20, color: alpha(accent, 0.95) }} />
+              )}
+            </Box>
 
-          <IconButton
-            size="small"
-            onClick={() => setToast((p) => ({ ...p, open: false }))}
-            sx={{
-              color: alpha("#fff", 0.35),
-              mt: -0.8,
-              mr: -0.8,
-              "&:hover": { color: alpha("#fff", 0.9), bgcolor: alpha("#fff", 0.08) },
-            }}
-          >
-            <CloseRoundedIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+            {/* Texto */}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              {/* Header: etiqueta + cerrar */}
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.6 }}>
+                <Box
+                  sx={{
+                    px: 1,
+                    py: 0.4,
+                    borderRadius: 99,
+                    bgcolor: alpha(accent, 0.14),
+                    border: "1px solid",
+                    borderColor: alpha(accent, 0.25),
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      color: alpha(accent, 0.95),
+                      fontWeight: 900,
+                      fontSize: 11,
+                      letterSpacing: 0.6,
+                      textTransform: "uppercase",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {isDelete ? "Revisión eliminada" : "Revisión actualizada"}
+                  </Typography>
+                </Box>
 
-        {/* Actividad (2 líneas) */}
-        {toast.msg?.revisionInfo?.nombreActividad && (
-          <Typography
-            sx={{
-              color: alpha("#fff", 0.92),
-              fontWeight: 800,
-              fontSize: 14,
-              lineHeight: 1.2,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              mb: 0.35,
-            }}
-          >
-            {toast.msg.revisionInfo.nombreActividad}
-          </Typography>
-        )}
+                <IconButton
+                  size="small"
+                  onClick={() => setToast((p) => ({ ...p, open: false }))}
+                  sx={{
+                    color: alpha("#fff", 0.35),
+                    mt: -0.8,
+                    mr: -0.8,
+                    "&:hover": { color: alpha("#fff", 0.9), bgcolor: alpha("#fff", 0.08) },
+                  }}
+                >
+                  <CloseRoundedIcon fontSize="small" />
+                </IconButton>
+              </Stack>
 
-        {/* Revisión (1 línea + tooltip) */}
-        {toast.msg?.revisionInfo?.nombreRevision && (
-          <Tooltip title={toast.msg.revisionInfo.nombreRevision} arrow>
-            <Typography
-              noWrap
-              sx={{
-                color: alpha("#fff", 0.68),
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {toast.msg.revisionInfo.nombreRevision}
-            </Typography>
-          </Tooltip>
-        )}
+              {/* Actividad (2 líneas) */}
+              {toast.msg?.revisionInfo?.nombreActividad && (
+                <Typography
+                  sx={{
+                    color: alpha("#fff", 0.92),
+                    fontWeight: 800,
+                    fontSize: 14,
+                    lineHeight: 1.2,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    mb: 0.35,
+                  }}
+                >
+                  {toast.msg.revisionInfo.nombreActividad}
+                </Typography>
+              )}
 
-        {/* Hora */}
-        {toast.msg?.revisionInfo?.horario && (
-          <Stack direction="row" spacing={0.6} alignItems="center" sx={{ mt: 0.9 }}>
-            <AccessTimeOutlinedIcon sx={{ fontSize: 14, color: alpha("#fff", 0.35) }} />
-            <Typography sx={{ color: alpha("#fff", 0.42), fontSize: 11, fontWeight: 600 }}>
-              {(() => {
-                try {
-                  return new Date(toast.msg.revisionInfo.horario).toLocaleTimeString("es-MX", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "America/Mexico_City",
-                  });
-                } catch {
-                  return "";
-                }
-              })()}
-            </Typography>
+              {/* Revisión (1 línea + tooltip) */}
+              {toast.msg?.revisionInfo?.nombreRevision && (
+                <Tooltip title={toast.msg.revisionInfo.nombreRevision} arrow>
+                  <Typography
+                    noWrap
+                    sx={{
+                      color: alpha("#fff", 0.68),
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {toast.msg.revisionInfo.nombreRevision}
+                  </Typography>
+                </Tooltip>
+              )}
+
+              {/* Hora */}
+              {toast.msg?.revisionInfo?.horario && (
+                <Stack direction="row" spacing={0.6} alignItems="center" sx={{ mt: 0.9 }}>
+                  <AccessTimeOutlinedIcon sx={{ fontSize: 14, color: alpha("#fff", 0.35) }} />
+                  <Typography sx={{ color: alpha("#fff", 0.42), fontSize: 11, fontWeight: 600 }}>
+                    {(() => {
+                      try {
+                        return new Date(toast.msg.revisionInfo.horario).toLocaleTimeString("es-MX", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "America/Mexico_City",
+                        });
+                      } catch {
+                        return "";
+                      }
+                    })()}
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
           </Stack>
-        )}
-      </Box>
-    </Stack>
-  </Box>
-</Snackbar>
+        </Box>
+      </Snackbar>
 
     </Box>
   );

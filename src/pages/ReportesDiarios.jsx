@@ -64,7 +64,7 @@ const COLORS = {
   no_productivo: "#ef4444",
 };
 
-// const BACKEND_URL = "http://localhost:3001";
+//const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
 // Funcion reutilizable para obtener el label correcto de un usuario
