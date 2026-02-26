@@ -233,17 +233,77 @@ function LoadingCard() {
 function StatCard({ icon: Icon, value, total, label, color = "primary", loading = false }) {
   const colorMap = { primary: "#3b82f6", success: "#10b981", warning: "#f59e0b", error: "#ef4444" };
 
+  const getFontSize = (str) => {
+    const len = String(str ?? "").length;
+    if (len <= 2)  return { xs: 20, sm: 24 };
+    if (len <= 4)  return { xs: 18, sm: 22 };
+    if (len <= 6)  return { xs: 15, sm: 18 };
+    return         { xs: 13, sm: 15 };
+  };
+
+  // El tamaño se basa en el valor más largo entre numerador y denominador
+  const longestStr = total != null
+    ? (String(value ?? "").length >= String(total ?? "").length ? String(value) : String(total))
+    : String(value ?? "");
+
+  const fontSize = getFontSize(longestStr);
+
   const displayValue = total != null
-    ? <>{value}<Typography component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>/{total}</Typography></>
+    ? (
+      <>
+        {value}
+        <Typography
+          component="span"
+          sx={{ color: "text.disabled", fontWeight: 500, fontSize: "0.75em" }}
+        >
+          /{total}
+        </Typography>
+      </>
+    )
     : value;
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: alpha(colorMap[color], 0.08), border: "1px solid", borderColor: alpha(colorMap[color], 0.2), textAlign: "center", transition: "all 0.3s ease", "&:hover": { bgcolor: alpha(colorMap[color], 0.12), transform: "translateY(-2px)" } }}>
+    <Box
+      sx={{
+        p: { xs: 1.5, sm: 2 },
+        borderRadius: 2,
+        bgcolor: alpha(colorMap[color], 0.08),
+        border: "1px solid",
+        borderColor: alpha(colorMap[color], 0.2),
+        textAlign: "center",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          bgcolor: alpha(colorMap[color], 0.12),
+          transform: "translateY(-2px)",
+        },
+      }}
+    >
       <Icon sx={{ fontSize: { xs: 24, sm: 28 }, color: colorMap[color], mb: 1 }} />
-      <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5, fontSize: { xs: 18, sm: 22 } }}>
-        {loading ? <CircularProgress size={20} sx={{ color: colorMap[color] }} /> : displayValue}
+      <Typography
+        variant="h5"
+        fontWeight={900}
+        sx={{
+          color: "text.primary",
+          mb: 0.5,
+          fontSize: fontSize,
+          lineHeight: 1.1,
+          wordBreak: "break-word",
+        }}
+      >
+        {loading
+          ? <CircularProgress size={20} sx={{ color: colorMap[color] }} />
+          : displayValue
+        }
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, fontSize: { xs: 10, sm: 12 } }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          fontSize: { xs: 10, sm: 12 },
+        }}
+      >
         {label}
       </Typography>
     </Box>
