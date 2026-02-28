@@ -53,9 +53,13 @@ import {
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 //const BACKEND_URL = "http://localhost:3001";
 
-// ✅ FUNCIONES DE FECHA CORREGIDAS
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+function hoyISO_CDMX() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function pasaronLas11AM() {
@@ -241,7 +245,6 @@ function StatCard({ icon: Icon, value, total, label, color = "primary", loading 
     return         { xs: 13, sm: 15 };
   };
 
-  // El tamaño se basa en el valor más largo entre numerador y denominador
   const longestStr = total != null
     ? (String(value ?? "").length >= String(total ?? "").length ? String(value) : String(total))
     : String(value ?? "");
@@ -310,7 +313,6 @@ function StatCard({ icon: Icon, value, total, label, color = "primary", loading 
   );
 }
 
-// ✅ FUNCIÓN OPTIMIZADA: Obtener datos de revisiones terminadas de un usuario
 async function obtenerDatosTerminadas(userId, fecha) {
   try {
     const qs = fecha ? `?date=${encodeURIComponent(fecha)}` : "";
@@ -353,10 +355,6 @@ async function obtenerDatosTerminadas(userId, fecha) {
 }
 
 export default function Productividad() {
-
-
-
-
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
@@ -366,7 +364,7 @@ export default function Productividad() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [datosAgendaCache, setDatosAgendaCache] = useState({}); // { userId: { actividades, revisiones, tiempo } }
+  const [datosAgendaCache, setDatosAgendaCache] = useState({});
 
   const [toast, setToast] = useState({
     open: false,
@@ -381,7 +379,7 @@ export default function Productividad() {
   const [, setSearchParams] = useSearchParams();
   const location = useLocation();
 
-  const today = useMemo(() => hoyISO(), []);
+  const today = useMemo(() => hoyISO_CDMX(), []);
 
   const [fecha, setFecha] = useState(() => {
     const sp = new URLSearchParams(location.search);
@@ -397,21 +395,15 @@ export default function Productividad() {
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
 
-  // ✅ Este switch ahora controla el modo:
-  // true  -> /api/productividad/hoy (planeado/proyección)
-  // false -> /api/productividad/hoy?date=YYYY-MM-DD (real/hecho)
   const [mostrarTodasLasRevisiones, setMostrarTodasLasRevisiones] = useState(false);
 
-  // ✅ SWITCH DEFAULT POR HORA (solo default, respeta al usuario)
   const [userTocoSwitch, setUserTocoSwitch] = useState(false);
 
-  // ✅ AGREGA ESTO: ref siempre fresco para closures del socket/debounce
   const mostrarRef = useRef(mostrarTodasLasRevisiones);
   useEffect(() => {
     mostrarRef.current = mostrarTodasLasRevisiones;
   }, [mostrarTodasLasRevisiones]);
 
-  // ✅ NUEVO
   const fechaRef = useRef(fecha);
   useEffect(() => {
     fechaRef.current = fecha;
@@ -423,13 +415,11 @@ export default function Productividad() {
 
   const patchAbortRef = useRef(null);
 
-
   const patchUsers = useCallback(async (userIds, msg) => {
     if (!Array.isArray(userIds) || userIds.length === 0) return;
 
     const mode = mostrarRef.current ? "agenda" : "hecho";
 
-    // filtra por modo
     if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
       const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
       if (mode !== modoEvento) return;
@@ -484,7 +474,6 @@ export default function Productividad() {
         };
       });
 
-      // actualiza denominador si estamos en agenda
       if (mode === "agenda") {
         setDatosAgendaCache((prev) => {
           const next = { ...prev };
@@ -508,8 +497,7 @@ export default function Productividad() {
         return s;
       });
     }
-  }, []); // sin dependencias, usa refs
-
+  }, []);
 
   const addDaysISO = (iso, delta) => {
     const d = new Date(`${iso}T00:00:00`);
@@ -517,25 +505,20 @@ export default function Productividad() {
     return d.toISOString().slice(0, 10);
   };
 
-const setFechaAndUrl = (next) => {
-  setFecha(next);
-  if (!next || next === today) {
-    setSearchParams({}, { replace: true });
-  } else {
-    setSearchParams({ date: next }, { replace: true });
-  }
-  setUserTocoSwitch(false);
-  setMostrarTodasLasRevisiones(false);
-  setDatosTerminadasCache({});
-  setDatosAgendaCache({});       // ← limpia al cambiar fecha
-  setUsuariosCargando(new Set());
-};
+  const setFechaAndUrl = (next) => {
+    setFecha(next);
+    if (!next || next === today) {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ date: next }, { replace: true });
+    }
+    setUserTocoSwitch(false);
+    setMostrarTodasLasRevisiones(false);
+    setDatosTerminadasCache({});
+    setDatosAgendaCache({});
+    setUsuariosCargando(new Set());
+  };
 
-  // ✅ SWITCH DEFAULT POR HORA:
-  // - Hoy + antes de 11 => ON por default
-  // - Hoy + después de 11 => OFF por default
-  // - Si el usuario lo tocó, no se le pisa
-  // - Si llegan las 11 con la página abierta, se apaga SOLO si no lo tocó
   useEffect(() => {
     const esHoy = fecha === today;
 
@@ -557,52 +540,20 @@ const setFechaAndUrl = (next) => {
 
     return () => clearTimeout(id);
   }, [fecha, today, userTocoSwitch]);
+
   const esHoy = useMemo(() => fecha === today, [fecha, today]);
 
-
-  // ✅ FIX: siempre mostrar lo que venga de la API principal (hoy vs hoy?date)
   const debeRestringirRevisiones = false;
 
-
-  // Siempre carga agenda en background para tener denominadores frescos
-const cargarAgendaBackground = useCallback(async () => {
-  if (!esHoy) return;
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/productividad/hoy`);
-    if (!res.ok) return;
-    const agendaData = await res.json();
-    if (!agendaData?.users) return;
-    const cache = {};
-    for (const u of agendaData.users) {
-      cache[u.user_id] = {
-        actividades: Number(u.actividades ?? 0),
-        revisiones: Number(u.revisiones ?? 0),
-        tiempo: Number(u.tiempo_total ?? 0),
-      };
-    }
-    setDatosAgendaCache(cache);
-  } catch (e) {
-    console.error("cargarAgendaBackground error:", e);
-  }
-}, [esHoy]); // ← esHoy es suficiente, no necesita más deps
-
-const cargar = useCallback(async () => {
-  setLoading(true);
-  setErr("");
-  try {
-    const url = mostrarTodasLasRevisiones
-      ? `${BACKEND_URL}/api/productividad/hoy`
-      : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(await res.text());
-    const newData = await res.json();
-    setData(newData);
-
-    // Si estamos en agenda, el data ES el denominador — actualiza cache
-    if (mostrarTodasLasRevisiones && newData?.users) {
+  const cargarAgendaBackground = useCallback(async () => {
+    if (!esHoy) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/productividad/hoy`);
+      if (!res.ok) return;
+      const agendaData = await res.json();
+      if (!agendaData?.users) return;
       const cache = {};
-      for (const u of newData.users) {
+      for (const u of agendaData.users) {
         cache[u.user_id] = {
           actividades: Number(u.actividades ?? 0),
           revisiones: Number(u.revisiones ?? 0),
@@ -610,16 +561,45 @@ const cargar = useCallback(async () => {
         };
       }
       setDatosAgendaCache(cache);
+    } catch (e) {
+      console.error("cargarAgendaBackground error:", e);
     }
+  }, [esHoy]);
 
-    setDatosTerminadasCache({});
-    setUsuariosCargando(new Set());
-  } catch (e) {
-    setErr(e?.message || String(e));
-  } finally {
-    setLoading(false);
-  }
-}, [fecha, mostrarTodasLasRevisiones]);
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const url = mostrarTodasLasRevisiones
+        ? `${BACKEND_URL}/api/productividad/hoy`
+        : `${BACKEND_URL}/api/productividad/hoy?date=${encodeURIComponent(fecha)}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const newData = await res.json();
+      setData(newData);
+
+      if (mostrarTodasLasRevisiones && newData?.users) {
+        const cache = {};
+        for (const u of newData.users) {
+          cache[u.user_id] = {
+            actividades: Number(u.actividades ?? 0),
+            revisiones: Number(u.revisiones ?? 0),
+            tiempo: Number(u.tiempo_total ?? 0),
+          };
+        }
+        setDatosAgendaCache(cache);
+      }
+
+      setDatosTerminadasCache({});
+      setUsuariosCargando(new Set());
+    } catch (e) {
+      setErr(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [fecha, mostrarTodasLasRevisiones]);
+
   const onRefetchStable = useCallback((...args) => {
     cargarRef.current?.(...args);
   }, []);
@@ -631,20 +611,18 @@ const cargar = useCallback(async () => {
     enabled: true,
     onDayUpdate: notify,
     onPatchUsers: patchUsers,
-    onRefetch: onRefetchStable,  // ← siempre estable
+    onRefetch: onRefetchStable,
     onConnectionChange: setConnected,
     patchDebounceMs: 250,
   });
-
 
   useEffect(() => {
     cargarRef.current = cargar;
   }, [cargar]);
 
-// Y este useEffect dispara la recarga siempre que cambie el modo O la fecha:
-useEffect(() => {
-  cargarAgendaBackground();
-}, [cargarAgendaBackground, mostrarTodasLasRevisiones]); // ← agrega mostrarTodasLasRevisiones
+  useEffect(() => {
+    cargarAgendaBackground();
+  }, [cargarAgendaBackground, mostrarTodasLasRevisiones]);
 
   useEffect(() => {
     cargar();
@@ -867,7 +845,6 @@ useEffect(() => {
                         setUserTocoSwitch(true);
                         setMostrarTodasLasRevisiones((prev) => !prev);
                         setData(null);
-                        
                         setDatosTerminadasCache({});
                         setUsuariosCargando(new Set());
                       }}
@@ -893,8 +870,6 @@ useEffect(() => {
                   sx={{ m: 0, ml: { xs: 0, sm: 1 } }}
                 />
               )}
-
-
 
               <Button
                 fullWidth={isMobile}
@@ -972,10 +947,10 @@ useEffect(() => {
                       }}
                     >
                       <ToggleButton value="todos">Todos ({counts.todos})</ToggleButton>
-                      <ToggleButton value="productivo">✓ Productivo ({counts.productivo})</ToggleButton>
-                      <ToggleButton value="regular">~ Regular ({counts.regular})</ToggleButton>
-                      <ToggleButton value="no_productivo">✗ No productivo ({counts.no_productivo})</ToggleButton>
-                      <ToggleButton value="sin_actividad">○ Sin actividad ({counts.sin_actividad})</ToggleButton>
+                      <ToggleButton value="productivo">Productivo ({counts.productivo})</ToggleButton>
+                      <ToggleButton value="regular">Regular ({counts.regular})</ToggleButton>
+                      <ToggleButton value="no_productivo">No productivo ({counts.no_productivo})</ToggleButton>
+                      <ToggleButton value="sin_actividad">Sin actividad ({counts.sin_actividad})</ToggleButton>
                     </ToggleButtonGroup>
                   </Box>
 
@@ -1052,12 +1027,8 @@ useEffect(() => {
                 const mostrarRestringido = debeRestringirRevisiones;
 
                 const actividadesAMostrar = mostrarRestringido ? (datosTerminadas?.actividades ?? 0) : datosOriginales.actividades;
-                const agendaRef = datosAgendaCache[u.user_id]; // denominador (agenda)
+                const agendaRef = datosAgendaCache[u.user_id];
 
-                // En modo hecho: numerador=hecho, denominador=agenda
-                // En modo agenda: sin fracción
-                // En modo hecho: numerador=hecho, denominador=agenda
-                // SOLO para HOY. Para días anteriores: sin fracción (normal).
                 const mostrarFraccion = esHoy && !mostrarTodasLasRevisiones && !!agendaRef;
 
                 const totalActividades = mostrarFraccion ? agendaRef.actividades : undefined;
@@ -1225,7 +1196,6 @@ useEffect(() => {
             boxShadow: "0 18px 60px rgba(0,0,0,.55)",
           }}
         >
-          {/* Acento izquierdo */}
           <Box
             sx={{
               position: "absolute",
@@ -1237,7 +1207,6 @@ useEffect(() => {
             }}
           />
 
-          {/* Barra de progreso sutil arriba */}
           <LinearProgress
             variant="determinate"
             value={100}
@@ -1254,7 +1223,6 @@ useEffect(() => {
           />
 
           <Stack direction="row" spacing={1.5} sx={{ p: 2, pl: 2.2 }} alignItems="flex-start">
-            {/* Icono */}
             <Box
               sx={{
                 width: 38,
@@ -1275,9 +1243,7 @@ useEffect(() => {
               )}
             </Box>
 
-            {/* Texto */}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              {/* Header: etiqueta + cerrar */}
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.6 }}>
                 <Box
                   sx={{
@@ -1317,7 +1283,6 @@ useEffect(() => {
                 </IconButton>
               </Stack>
 
-              {/* Actividad (2 líneas) */}
               {toast.msg?.revisionInfo?.nombreActividad && (
                 <Typography
                   sx={{
@@ -1337,7 +1302,6 @@ useEffect(() => {
                 </Typography>
               )}
 
-              {/* Revisión (1 línea + tooltip) */}
               {toast.msg?.revisionInfo?.nombreRevision && (
                 <Tooltip title={toast.msg.revisionInfo.nombreRevision} arrow>
                   <Typography
@@ -1353,7 +1317,6 @@ useEffect(() => {
                 </Tooltip>
               )}
 
-              {/* Hora */}
               {toast.msg?.revisionInfo?.horario && (
                 <Stack direction="row" spacing={0.6} alignItems="center" sx={{ mt: 0.9 }}>
                   <AccessTimeOutlinedIcon sx={{ fontSize: 14, color: alpha("#fff", 0.35) }} />
