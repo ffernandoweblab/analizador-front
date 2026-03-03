@@ -49,8 +49,8 @@ import {
   Snackbar,
 } from "@mui/material";
 
-const BACKEND_URL = "https://backend-1-azu0.onrender.com";
-// const BACKEND_URL = "http://localhost:3001";
+// const BACKEND_URL = "https://backend-1-azu0.onrender.com";
+const BACKEND_URL = "http://localhost:3001";
 
 function hoyISO_CDMX() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -63,7 +63,11 @@ function hoyISO_CDMX() {
 
 function mananaISO_CDMX() {
   const hoy = new Date();
-  hoy.setDate(hoy.getDate() + 1);
+  const dow = hoy.getDay(); // 0=dom, 1=lun, ..., 5=vie, 6=sab
+  let delta = 1;
+  if (dow === 5) delta = 3; // viernes -> lunes
+  if (dow === 6) delta = 2; // sabado -> lunes
+  hoy.setDate(hoy.getDate() + delta);
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
@@ -655,6 +659,32 @@ export default function Productividad() {
                   {loading ? "Cargando..." : "Actualizar"}
                 </Button>
               )}
+
+              <Button
+                fullWidth={isMobile}
+                variant={esManana ? "contained" : "outlined"}
+                onClick={() => setFechaAndUrl(esManana ? today : manana)}
+                sx={{
+                  borderRadius: 2,
+                  px: { xs: 2.5, sm: 3 },
+                  py: { xs: 1.1, sm: 1.15 },
+                  background: esManana
+                    ? "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)"
+                    : "transparent",
+                  borderColor: "#8b5cf6",
+                  color: esManana ? "white" : "#8b5cf6",
+                  textTransform: "none",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                    color: "white",
+                    borderColor: "#8b5cf6",
+                  },
+                }}
+              >
+                {esManana ? "Ver hoy" : "Predicción mañana"}
+              </Button>
             </Stack>
           </Stack>
 
