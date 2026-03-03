@@ -466,7 +466,7 @@ export default function Productividad() {
     const ms = msHastaLas11AM();
     const id = setTimeout(() => { setMostrarTodasLasRevisiones((prev) => (userTocoSwitch ? prev : false)); }, ms);
     return () => clearTimeout(id);
-  }, [fecha, today, userTocoSwitch]);
+  }, [fecha, today, userTocoSwitch, esHoy]);
 
   const debeRestringirRevisiones = false;
 
