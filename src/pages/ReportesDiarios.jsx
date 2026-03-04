@@ -67,10 +67,9 @@ const COLORS = {
 // const BACKEND_URL = "http://localhost:3001";
 const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 
-// Funcion reutilizable para obtener el label correcto de un usuario
 function obtenerLabelUsuario(user) {
   let label = user.prediccion?.label;
-  
+
   if (!label && user.prediccion?.probabilidades) {
     const probs = user.prediccion.probabilidades;
     const maxProb = Math.max(
@@ -78,12 +77,12 @@ function obtenerLabelUsuario(user) {
       probs.regular || 0,
       probs.no_productivo || 0
     );
-    
+
     if (maxProb === (probs.productivo || 0)) label = "productivo";
     else if (maxProb === (probs.no_productivo || 0)) label = "no_productivo";
     else label = "regular";
   }
-  
+
   return label || "regular";
 }
 
@@ -98,20 +97,24 @@ function formatearTiempo(minutos) {
   return `${minutos} min`;
 }
 
-//  FUNCIÓN CORRECTA: Obtiene últimos 7 días SIN incluir HOY
 function obtenerDiasLaboralesAntesDe(diasRequeridos = 7) {
   const dias = [];
-  const hoy = new Date();
-  let fechaActual = new Date(hoy);
-  
-  // 🔑 Empezar desde AYER (no desde hoy)
+
+  const ahoraEnCDMX = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" })
+  );
+
+  let fechaActual = new Date(ahoraEnCDMX);
   fechaActual.setDate(fechaActual.getDate() - 1);
 
   while (dias.length < diasRequeridos) {
     const diaSemana = fechaActual.getDay();
 
     if (diaSemana !== 0 && diaSemana !== 6) {
-      dias.push(fechaActual.toISOString().slice(0, 10));
+      const yyyy = fechaActual.getFullYear();
+      const mm = String(fechaActual.getMonth() + 1).padStart(2, "0");
+      const dd = String(fechaActual.getDate()).padStart(2, "0");
+      dias.push(`${yyyy}-${mm}-${dd}`);
     }
 
     fechaActual.setDate(fechaActual.getDate() - 1);
@@ -120,7 +123,6 @@ function obtenerDiasLaboralesAntesDe(diasRequeridos = 7) {
   return dias.reverse();
 }
 
-// Modal para mostrar usuarios de un día seleccionado
 function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
   const [usuariosDelDia, setUsuariosDelDia] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,14 +130,14 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
   useEffect(() => {
     const cargarUsuariosDelDia = async () => {
       if (!diaSeleccionado) return;
-      
+
       setLoading(true);
       try {
         const url = `${BACKEND_URL}/api/productividad/hoy?date=${diaSeleccionado.fechaCompleta}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Error al cargar');
         const data = await res.json();
-        
+
         setUsuariosDelDia(data.users || []);
       } catch (e) {
         console.error('Error:', e);
@@ -175,7 +177,7 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
           <Typography variant="body2" color="text.secondary">
             <strong>Total:</strong> {diaSeleccionado.total} usuarios
           </Typography>
-          
+
           <Grid container spacing={1}>
             <Grid item xs={6}>
               <Box sx={{ p: 1.5, bgcolor: alpha('#10b981', 0.1), borderRadius: 2, textAlign: 'center' }}>
@@ -272,7 +274,6 @@ function ModalUsuariosDia({ diaSeleccionado, onClose, onNavigateToDia }) {
   );
 }
 
-// Modal expandible para graficas
 function ModalGrafica({ titulo, tipo, datos, onClose }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -371,14 +372,17 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                   width={isMobile ? 100 : 180}
                 />
                 <RechartsTooltip
-                  formatter={(value) => formatearTiempo(value)}
                   contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: "10px",
-                    color: theme.palette.text.primary,
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#f1f5f9",
                     fontSize: isMobile ? "12px" : "14px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
                   }}
+                  labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                  itemStyle={{ color: "#f1f5f9" }}
+                  formatter={(value) => [formatearTiempo(value), "Tiempo"]}
                 />
                 <Bar dataKey="tiempo" fill={COLORS.productivo} radius={[0, 8, 8, 0]} />
               </BarChart>
@@ -409,12 +413,15 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                 <YAxis tick={{ fontSize: isMobile ? 10 : 13, fill: theme.palette.text.primary }} />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: "10px",
-                    color: theme.palette.text.primary,
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#f1f5f9",
                     fontSize: isMobile ? "12px" : "14px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
                   }}
+                  labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                  itemStyle={{ color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: isMobile ? "12px" : "14px" }} />
                 <Bar dataKey="actividades" fill="#3b82f6" radius={[8, 8, 0, 0]} />
@@ -437,7 +444,7 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                     isMobile
                       ? false
                       : ({ name, count, percent }) =>
-                          `${name}: ${count} usuarios (${(percent * 100).toFixed(1)}%)`
+                        `${name}: ${count} usuarios (${(percent * 100).toFixed(1)}%)`
                   }
                   outerRadius={isMobile ? 95 : isTablet ? 150 : 190}
                   fill="#8884d8"
@@ -455,13 +462,15 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                   ]}
                   contentStyle={{
                     backgroundColor: "#1f2937",
-                    border: `2px solid ${theme.palette.primary.main}`,
+                    border: "2px solid #3b82f6",
                     borderRadius: "8px",
-                    color: "#ffffff",
+                    color: "#f1f5f9",
                     fontSize: isMobile ? "12px" : "14px",
                     padding: "8px 12px",
                     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
                   }}
+                  labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                  itemStyle={{ color: "#f1f5f9" }}
                 />
 
                 <Legend
@@ -497,12 +506,15 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
                 <YAxis tick={{ fontSize: isMobile ? 10 : 13, fill: theme.palette.text.primary }} />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: theme.palette.background.paper,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: "10px",
-                    color: theme.palette.text.primary,
+                    backgroundColor: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    color: "#f1f5f9",
                     fontSize: isMobile ? "12px" : "14px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
                   }}
+                  labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                  itemStyle={{ color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: isMobile ? "12px" : "14px" }} />
                 <Bar dataKey="productivo" stackId="a" fill={COLORS.productivo} radius={[8, 8, 0, 0]} />
@@ -517,19 +529,18 @@ function ModalGrafica({ titulo, tipo, datos, onClose }) {
   );
 }
 
-// Componente de paginacion para tabla
 function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
   const totalPaginas = Math.ceil(total / porPagina);
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  
+
   if (totalPaginas <= 1) return null;
 
   return (
-    <Stack 
-      direction="row" 
-      spacing={{ xs: 1, sm: 2 }} 
-      justifyContent="center" 
-      alignItems="center" 
+    <Stack
+      direction="row"
+      spacing={{ xs: 1, sm: 2 }}
+      justifyContent="center"
+      alignItems="center"
       sx={{ py: 2 }}
       flexWrap="wrap"
     >
@@ -543,11 +554,11 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
       >
         {isMobile ? "Ant" : "Anterior"}
       </Button>
-      
-      <Typography 
-        variant="body2" 
-        sx={{ 
-          color: "text.secondary", 
+
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
           fontWeight: 600,
           fontSize: { xs: "0.75rem", sm: "0.875rem" },
           px: 1,
@@ -555,7 +566,7 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
       >
         {"Pág"} {paginaActual} de {totalPaginas}
       </Typography>
-      
+
       <Button
         variant="outlined"
         onClick={() => onCambiarPagina(paginaActual + 1)}
@@ -570,7 +581,6 @@ function PaginacionTabla({ total, porPagina, paginaActual, onCambiarPagina }) {
   );
 }
 
-// Componente de estadistica
 function StatCard({ icon: Icon, label, value, color }) {
   return (
     <Card
@@ -603,21 +613,21 @@ function StatCard({ icon: Icon, label, value, color }) {
             <Icon sx={{ fontSize: { xs: 24, sm: 32 }, color: color }} />
           </Box>
           <Box>
-            <Typography 
-              variant="h4" 
-              fontWeight={900} 
-              sx={{ 
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
                 color: "text.primary",
                 fontSize: { xs: "1.5rem", sm: "2rem" }
               }}
             >
               {value}
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: "text.secondary", 
-                fontWeight: 600, 
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: 600,
                 mt: 0.5,
                 fontSize: { xs: "0.75rem", sm: "0.875rem" }
               }}
@@ -635,14 +645,14 @@ export default function ReportesDiarios() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [isToday, setIsToday] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  
+
   const [modalActivo, setModalActivo] = useState(null);
   const [paginaUsuarios, setPaginaUsuarios] = useState(1);
   const [datosOchoDias, setDatosOchoDias] = useState([]);
@@ -660,7 +670,7 @@ export default function ReportesDiarios() {
     setErr("");
     try {
       const today = new Date().toISOString().slice(0, 10);
-      
+
       const url = fecha === today
         ? `${BACKEND_URL}/api/productividad/hoy`
         : `${BACKEND_URL}/api/productividad/hoy?date=${fecha}`;
@@ -669,7 +679,7 @@ export default function ReportesDiarios() {
       if (!res.ok) {
         throw new Error(`Error ${res.status}: ${await res.text()}`);
       }
-      
+
       const jsonData = await res.json();
       setData(jsonData);
       setPaginaUsuarios(1);
@@ -681,16 +691,15 @@ export default function ReportesDiarios() {
     }
   }, [fecha]);
 
-  // ✅ FIX: Usa obtenerDiasLaboralesAntesDe para excluir HOY
   const cargarDatos7Dias = useCallback(async () => {
     setLoadingOchoDias(true);
     try {
       const diasLaborales = obtenerDiasLaboralesAntesDe(7);
-      
+
       const promesas = diasLaborales.map(async (fechaDia) => {
         try {
           const url = `${BACKEND_URL}/api/productividad/hoy?date=${fechaDia}`;
-          
+
           const res = await fetch(url);
           if (!res.ok) throw new Error('Error al cargar');
           const dataDia = await res.json();
@@ -730,12 +739,10 @@ export default function ReportesDiarios() {
     }
   }, []);
 
-  // Cargar datos del dia seleccionado cuando cambia la fecha
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
 
-  // Cargar datos de 7 dias solo UNA VEZ al montar el componente
   const datos7DiasCargados = React.useRef(false);
   useEffect(() => {
     if (!datos7DiasCargados.current) {
@@ -744,7 +751,6 @@ export default function ReportesDiarios() {
     }
   }, [cargarDatos7Dias]);
 
-  // Auto-refresh solo para datos del dia actual
   useEffect(() => {
     if (!isToday || !autoRefresh) return;
 
@@ -774,23 +780,23 @@ export default function ReportesDiarios() {
     });
 
     const total = data.users.length;
-    
+
     return [
-      { 
-        name: "Productivo", 
-        count: contadores.productivo, 
+      {
+        name: "Productivo",
+        count: contadores.productivo,
         fill: COLORS.productivo,
         percent: contadores.productivo / total
       },
-      { 
-        name: "Regular", 
-        count: contadores.regular, 
+      {
+        name: "Regular",
+        count: contadores.regular,
         fill: COLORS.regular,
         percent: contadores.regular / total
       },
-      { 
-        name: "No Productivo", 
-        count: contadores.no_productivo, 
+      {
+        name: "No Productivo",
+        count: contadores.no_productivo,
         fill: COLORS.no_productivo,
         percent: contadores.no_productivo / total
       },
@@ -858,7 +864,7 @@ export default function ReportesDiarios() {
       </Box>
     );
   }
-  
+
   if (!data) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
@@ -873,6 +879,15 @@ export default function ReportesDiarios() {
   }
 
   const mostrarAvisoSinDatos = isToday && usuarios.length === 0;
+
+  const tooltipDarkStyle = {
+    backgroundColor: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: "8px",
+    color: "#f1f5f9",
+    fontSize: isMobile ? "12px" : "14px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+  };
 
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", py: { xs: 2, sm: 3, md: 4 } }}>
@@ -896,10 +911,10 @@ export default function ReportesDiarios() {
                 >
                   Reporte de Productividad {!isMobile && isToday && "- Hoy"}
                 </Typography>
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    color: "text.secondary", 
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "text.secondary",
                     mt: 0.5,
                     fontSize: { xs: "0.875rem", sm: "1rem" }
                   }}
@@ -913,9 +928,9 @@ export default function ReportesDiarios() {
             <Card sx={{ borderRadius: 3, bgcolor: "background.paper", border: "1px solid", borderColor: "divider" }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Stack spacing={2}>
-                  <Stack 
-                    direction={{ xs: "column", sm: "row" }} 
-                    spacing={2} 
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={2}
                     alignItems={{ xs: "stretch", sm: "center" }}
                     flexWrap="wrap"
                   >
@@ -996,7 +1011,7 @@ export default function ReportesDiarios() {
                         },
                       }}
                     >
-                      {loading ? "Cargando..." : (isMobile ? "Actualizar" : "Actualizar")}
+                      {loading ? "Cargando..." : "Actualizar"}
                     </Button>
                   </Stack>
                 </Stack>
@@ -1032,7 +1047,7 @@ export default function ReportesDiarios() {
                 const Icon = iconMap[item.name];
                 const total = distribucion.reduce((sum, d) => sum + d.count, 0);
                 const porcentaje = ((item.count / total) * 100).toFixed(1);
-                
+
                 return (
                   <Grid item xs={12} sm={6} md={3} key={item.name}>
                     <StatCard
@@ -1050,10 +1065,10 @@ export default function ReportesDiarios() {
           {/* Graficas Principales */}
           {usuarios.length > 0 && (
             <>
-              <Typography 
-                variant="h5" 
-                fontWeight={800} 
-                sx={{ 
+              <Typography
+                variant="h5"
+                fontWeight={800}
+                sx={{
                   mt: 2,
                   fontSize: { xs: "1.25rem", sm: "1.5rem" }
                 }}
@@ -1079,16 +1094,16 @@ export default function ReportesDiarios() {
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                        <Typography 
-                          variant="h6" 
+                        <Typography
+                          variant="h6"
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
                           {'📈'} {isMobile ? "Ultimos 7 dias" : "Productividad Ultimos 7 Dias"}
                         </Typography>
                         <Tooltip title="Click para ver detalles o en un dia para ver sus colaboradores">
-                          <IconButton 
-                            size="small" 
+                          <IconButton
+                            size="small"
                             disabled={loadingOchoDias}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1099,7 +1114,7 @@ export default function ReportesDiarios() {
                           </IconButton>
                         </Tooltip>
                       </Stack>
-                      
+
                       {loadingOchoDias ? (
                         <Box sx={{ height: isMobile ? 350 : 450, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <CircularProgress />
@@ -1107,8 +1122,8 @@ export default function ReportesDiarios() {
                       ) : (
                         <Box sx={{ cursor: 'pointer' }}>
                           <ResponsiveContainer width="100%" height={isMobile ? 350 : 450}>
-                            <BarChart 
-                              data={datosOchoDias} 
+                            <BarChart
+                              data={datosOchoDias}
                               margin={{ bottom: isMobile ? 60 : 80 }}
                               onClick={(event) => {
                                 if (event && event.activeTooltipIndex !== undefined) {
@@ -1129,13 +1144,9 @@ export default function ReportesDiarios() {
                               />
                               <YAxis tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.primary }} />
                               <RechartsTooltip
-                                contentStyle={{
-                                  backgroundColor: theme.palette.background.paper,
-                                  border: `1px solid ${theme.palette.divider}`,
-                                  borderRadius: "8px",
-                                  color: theme.palette.text.primary,
-                                  fontSize: isMobile ? "12px" : "14px",
-                                }}
+                                contentStyle={tooltipDarkStyle}
+                                labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                                itemStyle={{ color: "#f1f5f9" }}
                               />
                               <Legend wrapperStyle={{ fontSize: isMobile ? "11px" : "14px" }} />
                               <Bar dataKey="productivo" stackId="a" fill={COLORS.productivo} name="Productivo" />
@@ -1145,7 +1156,7 @@ export default function ReportesDiarios() {
                           </ResponsiveContainer>
                         </Box>
                       )}
-                      
+
                       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
                         {'💡'} Click en una barra para ver los colaboradores de ese dia
                       </Typography>
@@ -1172,8 +1183,8 @@ export default function ReportesDiarios() {
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                        <Typography 
-                          variant="h6" 
+                        <Typography
+                          variant="h6"
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
@@ -1201,14 +1212,15 @@ export default function ReportesDiarios() {
                               <Cell key={`cell-${index}`} fill={entry.fill} />
                             ))}
                           </Pie>
+                          {/* FIX: tooltip con colores fijos para modo oscuro */}
                           <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: theme.palette.background.paper,
-                              border: `1px solid ${theme.palette.divider}`,
-                              borderRadius: "8px",
-                              color: theme.palette.text.primary,
-                              fontSize: isMobile ? "12px" : "14px",
-                            }}
+                            contentStyle={tooltipDarkStyle}
+                            labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                            itemStyle={{ color: "#f1f5f9" }}
+                            formatter={(value, name, props) => [
+                              `${value} usuarios (${((props.payload.percent || 0) * 100).toFixed(1)}%)`,
+                              props.payload.name,
+                            ]}
                           />
                           {isMobile && <Legend wrapperStyle={{ fontSize: "10px" }} />}
                         </PieChart>
@@ -1236,8 +1248,8 @@ export default function ReportesDiarios() {
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                        <Typography 
-                          variant="h6" 
+                        <Typography
+                          variant="h6"
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
@@ -1252,28 +1264,24 @@ export default function ReportesDiarios() {
                         </Badge>
                       </Stack>
                       <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                        <BarChart 
-                          data={datosUsuariosPreview} 
+                        <BarChart
+                          data={datosUsuariosPreview}
                           layout="vertical"
                           margin={{ left: isMobile ? 60 : 80 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                           <XAxis type="number" tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.primary }} />
-                          <YAxis 
-                            dataKey="nombre" 
-                            type="category" 
-                            tick={{ fontSize: isMobile ? 9 : 11, fill: theme.palette.text.primary }} 
-                            width={isMobile ? 55 : 75} 
+                          <YAxis
+                            dataKey="nombre"
+                            type="category"
+                            tick={{ fontSize: isMobile ? 9 : 11, fill: theme.palette.text.primary }}
+                            width={isMobile ? 55 : 75}
                           />
                           <RechartsTooltip
-                            formatter={(value) => formatearTiempo(value)}
-                            contentStyle={{
-                              backgroundColor: theme.palette.background.paper,
-                              border: `1px solid ${theme.palette.divider}`,
-                              borderRadius: "8px",
-                              color: theme.palette.text.primary,
-                              fontSize: isMobile ? "12px" : "14px",
-                            }}
+                            contentStyle={tooltipDarkStyle}
+                            labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                            itemStyle={{ color: "#f1f5f9" }}
+                            formatter={(value) => [formatearTiempo(value), "Tiempo"]}
                           />
                           <Bar dataKey="tiempo" fill={COLORS.productivo} radius={[0, 8, 8, 0]} />
                         </BarChart>
@@ -1301,8 +1309,8 @@ export default function ReportesDiarios() {
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                        <Typography 
-                          variant="h6" 
+                        <Typography
+                          variant="h6"
                           fontWeight={800}
                           sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
                         >
@@ -1319,22 +1327,18 @@ export default function ReportesDiarios() {
                       <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                         <BarChart data={datosUsuariosPreview} margin={{ bottom: isMobile ? 60 : 80 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-                          <XAxis 
-                            dataKey="nombre" 
-                            tick={{ fontSize: isMobile ? 8 : 10, fill: theme.palette.text.primary }} 
-                            angle={-45} 
-                            textAnchor="end" 
-                            height={isMobile ? 60 : 80} 
+                          <XAxis
+                            dataKey="nombre"
+                            tick={{ fontSize: isMobile ? 8 : 10, fill: theme.palette.text.primary }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={isMobile ? 60 : 80}
                           />
                           <YAxis tick={{ fontSize: isMobile ? 10 : 12, fill: theme.palette.text.primary }} />
                           <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: theme.palette.background.paper,
-                              border: `1px solid ${theme.palette.divider}`,
-                              borderRadius: "8px",
-                              color: theme.palette.text.primary,
-                              fontSize: isMobile ? "12px" : "14px",
-                            }}
+                            contentStyle={tooltipDarkStyle}
+                            labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                            itemStyle={{ color: "#f1f5f9" }}
                           />
                           <Legend wrapperStyle={{ fontSize: isMobile ? "11px" : "14px" }} />
                           <Bar dataKey="actividades" fill="#3b82f6" radius={[8, 8, 0, 0]} />
@@ -1355,10 +1359,10 @@ export default function ReportesDiarios() {
                     }}
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                      <Typography 
-                        variant="h6" 
-                        fontWeight={800} 
-                        sx={{ 
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        sx={{
                           mb: 2,
                           fontSize: { xs: "1rem", sm: "1.25rem" }
                         }}
@@ -1368,14 +1372,14 @@ export default function ReportesDiarios() {
                       <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                         <RadarChart data={promedios}>
                           <PolarGrid stroke={theme.palette.divider} />
-                          <PolarAngleAxis 
-                            dataKey="nombre" 
-                            tick={{ fontSize: isMobile ? 9 : 12, fill: theme.palette.text.primary }} 
+                          <PolarAngleAxis
+                            dataKey="nombre"
+                            tick={{ fontSize: isMobile ? 9 : 12, fill: theme.palette.text.primary }}
                           />
-                          <PolarRadiusAxis 
-                            angle={90} 
-                            domain={[0, 100]} 
-                            tick={{ fontSize: isMobile ? 9 : 12, fill: theme.palette.text.primary }} 
+                          <PolarRadiusAxis
+                            angle={90}
+                            domain={[0, 100]}
+                            tick={{ fontSize: isMobile ? 9 : 12, fill: theme.palette.text.primary }}
                           />
                           <Radar
                             name="Productivo"
@@ -1400,13 +1404,9 @@ export default function ReportesDiarios() {
                           />
                           <Legend wrapperStyle={{ fontSize: isMobile ? "10px" : "14px" }} />
                           <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: theme.palette.background.paper,
-                              border: `1px solid ${theme.palette.divider}`,
-                              borderRadius: "8px",
-                              color: theme.palette.text.primary,
-                              fontSize: isMobile ? "12px" : "14px",
-                            }}
+                            contentStyle={tooltipDarkStyle}
+                            labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
+                            itemStyle={{ color: "#f1f5f9" }}
                           />
                         </RadarChart>
                       </ResponsiveContainer>
@@ -1417,10 +1417,10 @@ export default function ReportesDiarios() {
 
               {/* Tabla de Usuarios */}
               <Box>
-                <Typography 
-                  variant="h5" 
-                  fontWeight={800} 
-                  sx={{ 
+                <Typography
+                  variant="h5"
+                  fontWeight={800}
+                  sx={{
                     mb: 2,
                     fontSize: { xs: "1.25rem", sm: "1.5rem" }
                   }}
@@ -1428,8 +1428,8 @@ export default function ReportesDiarios() {
                   Detalle de Usuarios ({usuarios.length} total)
                 </Typography>
 
-                <PaginacionTabla 
-                  total={usuarios.length} 
+                <PaginacionTabla
+                  total={usuarios.length}
                   porPagina={usuariosPorPagina}
                   paginaActual={paginaUsuarios}
                   onCambiarPagina={setPaginaUsuarios}
@@ -1438,12 +1438,11 @@ export default function ReportesDiarios() {
                 <Card sx={{ borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
                   <Box sx={{ overflowX: "auto" }}>
                     <Box sx={{ minWidth: isMobile ? 500 : 650 }}>
-                      {/* Header */}
                       <Box
                         sx={{
                           display: "grid",
-                          gridTemplateColumns: isMobile 
-                            ? "2fr 1.5fr 1fr 1fr" 
+                          gridTemplateColumns: isMobile
+                            ? "2fr 1.5fr 1fr 1fr"
                             : "2fr 1.5fr 1fr 1fr 1fr",
                           gap: { xs: 1, sm: 2 },
                           p: { xs: 1.5, sm: 2 },
@@ -1471,7 +1470,6 @@ export default function ReportesDiarios() {
                         </Typography>
                       </Box>
 
-                      {/* Rows */}
                       {usuariosPaginados.map((user) => {
                         const estado = obtenerLabelUsuario(user);
                         const colorEstado = COLORS[estado];
@@ -1480,8 +1478,8 @@ export default function ReportesDiarios() {
                             key={user.user_id}
                             sx={{
                               display: "grid",
-                              gridTemplateColumns: isMobile 
-                                ? "2fr 1.5fr 1fr 1fr" 
+                              gridTemplateColumns: isMobile
+                                ? "2fr 1.5fr 1fr 1fr"
                                 : "2fr 1.5fr 1fr 1fr 1fr",
                               gap: { xs: 1, sm: 2 },
                               p: { xs: 1.5, sm: 2 },
@@ -1496,8 +1494,8 @@ export default function ReportesDiarios() {
                               }
                             }}
                           >
-                            <Typography 
-                              variant="body2" 
+                            <Typography
+                              variant="body2"
                               fontWeight={600}
                               fontSize={{ xs: "0.75rem", sm: "0.875rem" }}
                               noWrap
@@ -1506,8 +1504,8 @@ export default function ReportesDiarios() {
                             </Typography>
                             <Box>
                               <Chip
-                                label={isMobile 
-                                  ? estado.charAt(0).toUpperCase() 
+                                label={isMobile
+                                  ? estado.charAt(0).toUpperCase()
                                   : estado.charAt(0).toUpperCase() + estado.slice(1).replace("_", " ")
                                 }
                                 size="small"
@@ -1539,8 +1537,8 @@ export default function ReportesDiarios() {
                   </Box>
                 </Card>
 
-                <PaginacionTabla 
-                  total={usuarios.length} 
+                <PaginacionTabla
+                  total={usuarios.length}
                   porPagina={usuariosPorPagina}
                   paginaActual={paginaUsuarios}
                   onCambiarPagina={setPaginaUsuarios}
@@ -1551,7 +1549,6 @@ export default function ReportesDiarios() {
         </Stack>
       </Container>
 
-      {/* Modales */}
       {modalActivo === 'distribucion' && (
         <ModalGrafica
           titulo={`Distribucion${!isMobile ? " Detallada" : ""} (${usuarios.length} usuarios)`}
@@ -1588,8 +1585,7 @@ export default function ReportesDiarios() {
         />
       )}
 
-      {/* Modal para mostrar usuarios de un dia */}
-      <ModalUsuariosDia 
+      <ModalUsuariosDia
         diaSeleccionado={diaSeleccionado}
         onClose={() => setDiaSeleccionado(null)}
         onNavigateToDia={navegarADiaConColaborador}
