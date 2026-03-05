@@ -628,7 +628,7 @@ export default function Productividad() {
     const slug = nombreColaborador
       ? encodeURIComponent(nombreColaborador.toLowerCase().replace(/\s+/g, "-"))
       : encodeURIComponent(userId);
-    const base = `/productividad/${slug}`;
+    const base = `/productividad/colaborador${userId}`;
     const url = fecha === today ? base : `${base}?date=${encodeURIComponent(fecha)}`;
     const from = location.pathname + location.search;
     navigate(url, { state: { from, userId } });
