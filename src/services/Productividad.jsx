@@ -779,7 +779,7 @@ export default function Productividad() {
                         sx={{ ...toggleButtonGroupSx, width: { xs: "max-content", sm: "auto" } }}
                       >
                         <ToggleButton value="todos">Todos</ToggleButton>
-                        <ToggleButton value="print">Print</ToggleButton>
+                        <ToggleButton value="print">Weblab</ToggleButton>
                         <ToggleButton value="practicante">Practicantes</ToggleButton>
                       </ToggleButtonGroup>
                     </Box>
