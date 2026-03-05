@@ -49,7 +49,7 @@ import {
   Snackbar,
 } from "@mui/material";
 
- const BACKEND_URL = "https://backend-1-azu0.onrender.com";
+const BACKEND_URL = "https://backend-1-azu0.onrender.com";
 //const BACKEND_URL = "http://localhost:3001";
 
 function hoyISO_CDMX() {
@@ -624,10 +624,7 @@ export default function Productividad() {
     }
   }, [usuarios, debeRestringirRevisiones, cargarDatosUsuario]);
 
-  const onGoDetalle = useCallback((userId, nombreColaborador) => {
-    const slug = nombreColaborador
-      ? encodeURIComponent(nombreColaborador.toLowerCase().replace(/\s+/g, "-"))
-      : encodeURIComponent(userId);
+  const onGoDetalle = useCallback((userId) => {
     const base = `/productividad/colaborador${userId}`;
     const url = fecha === today ? base : `${base}?date=${encodeURIComponent(fecha)}`;
     const from = location.pathname + location.search;
