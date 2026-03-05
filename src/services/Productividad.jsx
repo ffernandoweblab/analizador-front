@@ -369,6 +369,11 @@ export default function Productividad() {
   const mostrarRef = useRef(mostrarTodasLasRevisiones);
   useEffect(() => { mostrarRef.current = mostrarTodasLasRevisiones; }, [mostrarTodasLasRevisiones]);
 
+  const modeRef = useRef(mostrarTodasLasRevisiones ? "agenda" : "hecho");
+useEffect(() => {
+  modeRef.current = mostrarTodasLasRevisiones ? "agenda" : "hecho";
+}, [mostrarTodasLasRevisiones]);
+
   const fechaRef = useRef(fecha);
   useEffect(() => { fechaRef.current = fecha; }, [fecha]);
 
@@ -406,11 +411,15 @@ export default function Productividad() {
 
   const patchUsers = useCallback(async (userIds, msg) => {
     if (!Array.isArray(userIds) || userIds.length === 0) return;
-    const mode = mostrarRef.current ? "agenda" : "hecho";
+    const mode = modeRef.current;
     if (Array.isArray(msg?.updatedUsers) && msg.updatedUsers.length > 0) {
       const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
       if (mode !== modoEvento) return;
+    } else if (msg?.useFechaCreacion !== undefined) {
+      const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
+      if (mode !== modoEvento) return;
     }
+    
     if (patchAbortRef.current) patchAbortRef.current.abort();
     const controller = new AbortController();
     patchAbortRef.current = controller;
