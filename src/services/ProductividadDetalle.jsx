@@ -534,7 +534,7 @@ export default function ProductividadDetalle() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userId: slugParam } = useParams();
-  const userId = location.state?.userId || slugParam;
+  const userId = location.state?.userId || slugParam.replace(/^colaborador/, "");
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [data, setData] = useState(null);
