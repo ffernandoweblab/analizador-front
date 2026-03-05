@@ -1,4 +1,4 @@
- import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 
 import {
@@ -131,6 +131,7 @@ function obtenerDiaMes(fecha) {
   return fechaObj.getDate();
 }
 
+
 function SemaforoVisual({ userId, fechaActual, onFechaClick }) {
   const [historial, setHistorial] = useState([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
@@ -168,6 +169,9 @@ function SemaforoVisual({ userId, fechaActual, onFechaClick }) {
 
     cargarHistorial();
   }, [userId]);
+
+
+
 
   const obtenerColorSemaforo = (label) => {
     switch (label) {
@@ -529,7 +533,8 @@ function Bucket({ title, items, color = "#3b82f6" }) {
 export default function ProductividadDetalle() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userId } = useParams();
+  const { userId: slugParam } = useParams();
+  const userId = location.state?.userId || slugParam;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [data, setData] = useState(null);
@@ -596,6 +601,10 @@ export default function ProductividadDetalle() {
       setData(newData);
       setPrevData(newData);
 
+      if (newData?.user?.colaborador) {
+        document.title = newData.user.colaborador;
+      }
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setErr(e?.message || String(e));
@@ -616,6 +625,11 @@ export default function ProductividadDetalle() {
     }
   }, [isCurrentDay]);
 
+  useEffect(() => {
+    return () => {
+      document.title = "Productividad";
+    };
+  }, []);
   const handleFechaClick = useCallback((nuevaFecha) => {
     setSearchParams({ date: nuevaFecha });
   }, [setSearchParams]);
@@ -642,8 +656,8 @@ export default function ProductividadDetalle() {
 
   const resumenActual = (data || prevData)?.resumen ?? {};
   const totalActividades = mostrarFraccion ? agendaResumen.actividades : undefined;
-  const totalRevisiones  = mostrarFraccion ? agendaResumen.revisiones  : undefined;
-  const totalTiempo      = mostrarFraccion ? formatearTiempo(agendaResumen.tiempo_total) : undefined;
+  const totalRevisiones = mostrarFraccion ? agendaResumen.revisiones : undefined;
+  const totalTiempo = mostrarFraccion ? formatearTiempo(agendaResumen.tiempo_total) : undefined;
 
   const from = location.state?.from;
   const backUrl = from
@@ -692,7 +706,7 @@ export default function ProductividadDetalle() {
                   WebkitTextFillColor: "transparent",
                 }}
               >
-                Detalle de usuario
+                {(data || prevData)?.user?.colaborador || "Detalle de usuario"}
               </Typography>
             </Stack>
 

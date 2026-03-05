@@ -624,11 +624,14 @@ export default function Productividad() {
     }
   }, [usuarios, debeRestringirRevisiones, cargarDatosUsuario]);
 
-  const onGoDetalle = useCallback((userId) => {
-    const base = `/productividad/${encodeURIComponent(userId)}`;
+  const onGoDetalle = useCallback((userId, nombreColaborador) => {
+    const slug = nombreColaborador
+      ? encodeURIComponent(nombreColaborador.toLowerCase().replace(/\s+/g, "-"))
+      : encodeURIComponent(userId);
+    const base = `/productividad/${slug}`;
     const url = fecha === today ? base : `${base}?date=${encodeURIComponent(fecha)}`;
     const from = location.pathname + location.search;
-    navigate(url, { state: { from } });
+    navigate(url, { state: { from, userId } });
   }, [navigate, fecha, today, location.pathname, location.search]);
 
   const parpadeoSx = {
@@ -971,7 +974,7 @@ export default function Productividad() {
                           "&::before": { content: '""', position: "absolute", top: 0, left: 0, right: 0, height: 4, background: palette.gradient },
                         }}
                       >
-                        <CardActionArea onClick={() => onGoDetalle(u.user_id)}>
+                        <CardActionArea onClick={() => onGoDetalle(u.user_id, u.colaborador)}>
                           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                             <Stack spacing={{ xs: 2, sm: 2.5 }}>
                               <Stack direction="row" spacing={2} alignItems="flex-start" justifyContent="space-between">
