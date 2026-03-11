@@ -22,6 +22,8 @@ import {
   alpha,
 } from "@mui/material";
 
+import { io } from "socket.io-client";
+
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
@@ -35,7 +37,7 @@ import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import { FormControlLabel, Switch, Tooltip } from "@mui/material";
 
 const BACKEND_URL_DETAIL = "https://backend-1-azu0.onrender.com";
-// const BACKEND_URL_DETAIL = "http://localhost:3001";
+//const BACKEND_URL_DETAIL = "http://localhost:3001";
 
 const LABEL_COLORS = {
   productivo: {
@@ -92,6 +94,19 @@ function toProb(v) {
 
 function normalizePhoneDigits(phone) {
   return String(phone || "").replace(/[^\d]/g, "");
+}
+
+
+
+function notionPageUrlFromId(id) {
+  const clean = String(id || "").replace(/-/g, "");
+  return clean ? `https://www.notion.so/${clean}` : "";
+}
+
+function getActividadNotionUrl(act) {
+  // si tu API de actividades ya trae act.url úsalo primero
+  if (act?.url) return act.url;
+  return notionPageUrlFromId(act?.id);
 }
 
 function buildWhatsAppUrl(phone) {
@@ -522,6 +537,28 @@ function Bucket({ title, items, color = "#3b82f6" }) {
                   </Stack>
                 </Grid>
               </Grid>
+              <Box sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // ✅ por si algún día lo metes en algo clickeable
+                    const url = notionPageUrlFromId(r?.id);
+                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    borderColor: alpha(color, 0.4),
+                    color: color,
+                    "&:hover": { borderColor: color, bgcolor: alpha(color, 0.08) },
+                  }}
+                >
+                  Abrir revisión en Notion
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         ))}
@@ -612,6 +649,32 @@ export default function ProductividadDetalle() {
       setLoading(false);
     }
   }, [userId, dateParam, modeOverride, isCurrentDay]);
+
+  useEffect(() => {
+    const socket = io(BACKEND_URL_DETAIL, { transports: ["websocket"] });
+
+    // ✅ AQUÍ (catch-all)
+    socket.onAny((event, ...args) => {
+      console.log("[socket] event:", event, "args:", args);
+    });
+
+    const onDayUpdate = (msg) => {
+      if (!msg) return;
+      if (msg.day !== day) return;
+
+      const touched = Array.isArray(msg.userIds) ? msg.userIds : [];
+      if (!touched.includes(userId)) return;
+
+      cargar();
+    };
+
+    socket.on("day_update", onDayUpdate);
+
+    return () => {
+      socket.off("day_update", onDayUpdate);
+      socket.disconnect();
+    };
+  }, [day, userId, cargar]);
 
   useEffect(() => {
     cargar();
@@ -959,20 +1022,48 @@ export default function ProductividadDetalle() {
                             expandIcon={<ExpandMoreOutlinedIcon sx={{ color: "#3b82f6", fontSize: 28 }} />}
                             sx={{ py: { xs: 1.5, sm: 2 }, px: { xs: 2, sm: 3 }, "&:hover": { bgcolor: alpha("#3b82f6", 0.03) } }}
                           >
-                            <Stack spacing={1} sx={{ width: "100%", pr: { xs: 1, sm: 2 } }}>
-                              <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1, sm: 2 }} alignItems={{ xs: "flex-start", sm: "center" }}>
-                                <Typography variant="h6" fontWeight={800} sx={{ fontSize: { xs: "1rem", sm: "1.1rem" }, wordBreak: "break-word" }}>
-                                  {t}
-                                </Typography>
+                            <Stack
+                              direction={{ xs: "column", sm: "row" }}
+                              spacing={{ xs: 1, sm: 2 }}
+                              alignItems={{ xs: "flex-start", sm: "center" }}
+                              sx={{ width: "100%" }}
+                            >
+                              <Typography
+                                variant="h6"
+                                fontWeight={800}
+                                sx={{ fontSize: { xs: "1rem", sm: "1.1rem" }, wordBreak: "break-word", flex: 1 }}
+                              >
+                                {t}
+                              </Typography>
+
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
                                 <Chip
                                   label={`${total} revisiones`}
                                   size="small"
                                   sx={{ bgcolor: alpha("#3b82f6", 0.15), color: "#3b82f6", fontWeight: 700, borderRadius: 999 }}
                                 />
+
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation(); // ✅ no abre/cierra el accordion
+                                    const url = getActividadNotionUrl(act);
+                                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                                  }}
+                                  sx={{
+                                    borderRadius: 999,
+                                    textTransform: "none",
+                                    fontWeight: 800,
+                                    borderColor: alpha("#3b82f6", 0.4),
+                                    color: "#3b82f6",
+                                    "&:hover": { borderColor: "#3b82f6", bgcolor: alpha("#3b82f6", 0.08) },
+                                  }}
+                                >
+                                  Abrir en Notion
+                                </Button>
                               </Stack>
-                              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                                ID: {act?.id || "N/A"} · Inicio: {act?.dueStart || "N/A"}
-                              </Typography>
                             </Stack>
                           </AccordionSummary>
 

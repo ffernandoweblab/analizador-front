@@ -370,9 +370,9 @@ export default function Productividad() {
   useEffect(() => { mostrarRef.current = mostrarTodasLasRevisiones; }, [mostrarTodasLasRevisiones]);
 
   const modeRef = useRef(mostrarTodasLasRevisiones ? "agenda" : "hecho");
-useEffect(() => {
-  modeRef.current = mostrarTodasLasRevisiones ? "agenda" : "hecho";
-}, [mostrarTodasLasRevisiones]);
+  useEffect(() => {
+    modeRef.current = mostrarTodasLasRevisiones ? "agenda" : "hecho";
+  }, [mostrarTodasLasRevisiones]);
 
   const fechaRef = useRef(fecha);
   useEffect(() => { fechaRef.current = fecha; }, [fecha]);
@@ -419,7 +419,7 @@ useEffect(() => {
       const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
       if (mode !== modoEvento) return;
     }
-    
+
     if (patchAbortRef.current) patchAbortRef.current.abort();
     const controller = new AbortController();
     patchAbortRef.current = controller;
