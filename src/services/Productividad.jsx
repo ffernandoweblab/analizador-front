@@ -370,9 +370,9 @@ export default function Productividad() {
   useEffect(() => { mostrarRef.current = mostrarTodasLasRevisiones; }, [mostrarTodasLasRevisiones]);
 
   const modeRef = useRef(mostrarTodasLasRevisiones ? "agenda" : "hecho");
-useEffect(() => {
-  modeRef.current = mostrarTodasLasRevisiones ? "agenda" : "hecho";
-}, [mostrarTodasLasRevisiones]);
+  useEffect(() => {
+    modeRef.current = mostrarTodasLasRevisiones ? "agenda" : "hecho";
+  }, [mostrarTodasLasRevisiones]);
 
   const fechaRef = useRef(fecha);
   useEffect(() => { fechaRef.current = fecha; }, [fecha]);
@@ -419,7 +419,7 @@ useEffect(() => {
       const modoEvento = msg?.useFechaCreacion === false ? "agenda" : "hecho";
       if (mode !== modoEvento) return;
     }
-    
+
     if (patchAbortRef.current) patchAbortRef.current.abort();
     const controller = new AbortController();
     patchAbortRef.current = controller;
@@ -1003,9 +1003,9 @@ useEffect(() => {
                               <Divider sx={{ borderColor: alpha("#fff", 0.08) }} />
 
                               <Grid container spacing={1.5}>
-                                <Grid item xs={12} sm={4}><StatCard icon={ChecklistOutlinedIcon} value={actividadesAMostrar} total={totalActividades} label="Actividades" color="primary" loading={estaCargando && mostrarRestringido} /></Grid>
-                                <Grid item xs={12} sm={4}><StatCard icon={AssignmentTurnedInOutlinedIcon} value={revisionesAMostrar} total={totalRevisiones} label={labelRevisiones} color="success" loading={estaCargando && mostrarRestringido} /></Grid>
-                                <Grid item xs={12} sm={4}><StatCard icon={AccessTimeOutlinedIcon} value={formatearTiempo(tiempoAMostrar)} total={totalTiempo} label="Tiempo" color="warning" loading={estaCargando && mostrarRestringido} /></Grid>
+                                <Grid item xs={4}><StatCard icon={ChecklistOutlinedIcon} value={actividadesAMostrar} total={totalActividades} label="Actividades" color="primary" loading={estaCargando && mostrarRestringido} /></Grid>
+                                <Grid item xs={4}><StatCard icon={AssignmentTurnedInOutlinedIcon} value={revisionesAMostrar} total={totalRevisiones} label={labelRevisiones} color="success" loading={estaCargando && mostrarRestringido} /></Grid>
+                                <Grid item xs={4}><StatCard icon={AccessTimeOutlinedIcon} value={formatearTiempo(tiempoAMostrar)} total={totalTiempo} label="Tiempo" color="warning" loading={estaCargando && mostrarRestringido} /></Grid>
                               </Grid>
 
                               <Box sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2, bgcolor: alpha("#fff", 0.02), border: "1px solid", borderColor: alpha("#fff", 0.05) }}>
