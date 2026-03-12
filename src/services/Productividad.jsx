@@ -271,7 +271,34 @@ function StatCard({ icon: Icon, value, total, label, color = "primary", loading 
       <Typography variant="h5" fontWeight={900} sx={{ color: "text.primary", mb: 0.5, fontSize, lineHeight: 1.1, wordBreak: "break-word" }}>
         {loading ? <CircularProgress size={20} sx={{ color: colorMap[color] }} /> : displayValue}
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, fontSize: { xs: 10, sm: 12 } }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: alpha("#fff", 0.72),
+          fontWeight: 900,
+          textTransform: "uppercase",
+          letterSpacing: { xs: 0.04, sm: 0.45 },
+          fontSize: { xs: 9, sm: 12 },
+          lineHeight: 1.05,
+          mt: 0.35,
+          px: 0.5,
+          textAlign: "center",
+          width: "100%",
+
+          // CLAVE: permitir partir palabras largas (ACTIVIDADES/REVISIONES)
+          whiteSpace: "normal",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+
+          // máximo 2 líneas (para que no crezca infinito)
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2,
+
+          // no uses ellipsis/nowrap porque corta
+          overflow: "hidden",
+        }}
+      >
         {label}
       </Typography>
     </Box>
